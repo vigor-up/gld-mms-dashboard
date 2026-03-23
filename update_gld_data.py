@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-GLD-MMS 系統 v4.0 - 前瞻預警版 (Leading Indicator Edition)
-1. 新增「前瞻雷達」模塊：偵測 OBV 能量背離、ATR 波動率擠壓。
-2. 實現「左側交易」預判功能：新增 PRE_BUY (準備買入) 信號。
-3. 支持三台 iOS 設備同步推送「變盤預警」。
+GLD-MMS 系統 v4.1 - 信心度門檻版
+1. 信心度 > 80% 才觸發買進/賣出推播。
+2. 新增 SELL / STRONG_SELL 信號。
+3. 三台 iOS 設備同步推送。
 """
 
 import json
@@ -57,7 +57,7 @@ class LeadingIndicatorUpdater:
             time_col = 'datetime' if 'datetime' in df.columns else df.columns[0]
             df['date_full'] = pd.to_datetime(df[time_col]).dt.strftime('%Y-%m-%d %H:%M')
             if 'adj close' in df.columns: df['close'] = df['adj close']
-            
+
             # --- 核心指標計算 ---
             # 1. OBV & OBV MA
             df['obv'] = (np.sign(df['close'].diff()) * df['volume']).fillna(0).cumsum()
@@ -66,17 +66,21 @@ class LeadingIndicatorUpdater:
             df['tp'] = (df['high'] + df['low'] + df['close']) / 3
             df['vwap'] = (df['tp'] * df['volume']).rolling(5).sum() / df['volume'].rolling(5).sum()
             df['vwap_dev'] = (df['close'] / df['vwap'] - 1) * 100
-            # 3. ATR 波動率擠壓 (Volatility Squeeze)
-            df['tr'] = np.maximum(df['high'] - df['low'], 
-                       np.maximum(abs(df['high'] - df['close'].shift(1)), 
+            # 3. ATR 波動率擠壓
+            df['tr'] = np.maximum(df['high'] - df['low'],
+                       np.maximum(abs(df['high'] - df['close'].shift(1)),
                                  abs(df['low'] - df['close'].shift(1))))
             df['atr'] = df['tr'].rolling(window=20).mean()
-            df['atr_low'] = df['atr'] < df['atr'].rolling(window=50).min() * 1.1 # 處於歷史低點 110% 以內
-            # 4. 能量背離 (Divergence)
+            df['atr_low'] = df['atr'] < df['atr'].rolling(window=50).min() * 1.1
+            # 4. 能量背離
             df['price_down'] = df['close'] < df['close'].shift(3)
             df['obv_up'] = df['obv'] > df['obv'].shift(3)
-            df['bull_div'] = df['price_down'] & df['obv_up'] # 底背離：價跌量增
-            
+            df['bull_div'] = df['price_down'] & df['obv_up']
+            # 5. 頂背離（用於賣出）
+            df['price_up'] = df['close'] > df['close'].shift(3)
+            df['obv_down'] = df['obv'] < df['obv'].shift(3)
+            df['bear_div'] = df['price_up'] & df['obv_down']
+
             df['is_pin_bar'] = self._detect_pin_bar(df).astype(bool)
             self.assets[ticker] = df.tail(100).to_dict('records')
             return True
@@ -98,40 +102,64 @@ class LeadingIndicatorUpdater:
         except: return False
 
     def send_push(self, title, content, ticker, is_leading=False):
+        """推播至所有已設定的設備（最多3台）"""
         icon = 'https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/128/color/gold.png'
         group = "GLD-LEADING" if is_leading else "GLD-MMS"
+        sent = 0
         for key in self.bark_keys:
             url = f"https://api.day.app/{key}/{title}/{content}?icon={icon}&group={group}&isArchive=1"
-            try: requests.get(url, timeout=10)
-            except: pass
+            try:
+                requests.get(url, timeout=10)
+                sent += 1
+            except Exception as e:
+                print(f"[WARN] Bark 推播失敗 (設備 {sent+1}): {e}")
+        print(f"[INFO] 推播完成：{sent}/{len(self.bark_keys)} 台設備")
 
     def calculate_signals(self):
         signals = {}
+        CONFIDENCE_THRESHOLD = 80  # ✅ 信心度門檻：>80% 才推播
+
         for ticker, data in self.assets.items():
             df = pd.DataFrame(data)
             latest = df.iloc[-1]
-            
-            # --- 1. 前瞻雷達 (Leading Radar) ---
+
+            # --- 1. 前瞻雷達 ---
             is_squeeze = bool(latest['atr_low'])
             is_div = bool(latest['bull_div'])
-            is_oversold = bool(latest['vwap_dev'] < -1.2) # 跌破機構成本過深，預期回歸
-            
+            is_bear_div = bool(latest['bear_div'])
+            is_oversold = bool(latest['vwap_dev'] < -1.2)
+            is_overbought = bool(latest['vwap_dev'] > 1.2)
+
             radar_msg = []
             if is_squeeze: radar_msg.append("波動擠壓(即將變盤)")
             if is_div: radar_msg.append("能量底背離(聰明錢進場)")
             if is_oversold: radar_msg.append("乖離過大(預期回抽)")
-            
-            # --- 2. 決策邏輯 (Decision Logic) ---
-            # 預判信號 (PRE_BUY)
-            if (is_div or is_oversold) and not bool(latest['is_pin_bar']):
-                s_sig = 'PRE_BUY'
-                s_conf = 75 if is_div and is_oversold else 65
-                s_reason = "偵測到左側交易機會：" + " & ".join(radar_msg)
-            # 趨勢確認信號 (BUY / STRONG_BUY)
-            elif latest['close'] > latest['vwap'] and latest['obv'] > latest['obv_ma5']:
+            if is_bear_div: radar_msg.append("能量頂背離(主力出貨)")
+            if is_overbought: radar_msg.append("超買乖離(預期回落)")
+
+            # --- 2. 決策邏輯 ---
+            # 趨勢買進
+            if latest['close'] > latest['vwap'] and latest['obv'] > latest['obv_ma5']:
                 s_sig = 'STRONG_BUY' if latest['vwap_dev'] < 1.0 else 'BUY'
                 s_conf = 85 if s_sig == 'STRONG_BUY' else 70
                 s_reason = "右側趨勢確認：量價共振向上"
+            # 趨勢賣出
+            elif latest['close'] < latest['vwap'] and latest['obv'] < latest['obv_ma5']:
+                if is_bear_div and is_overbought:
+                    s_sig = 'STRONG_SELL'
+                    s_conf = 88
+                elif is_bear_div or is_overbought:
+                    s_sig = 'SELL'
+                    s_conf = 82
+                else:
+                    s_sig = 'SELL'
+                    s_conf = 72
+                s_reason = "賣出確認：量價共振向下" + (" | " + " & ".join([m for m in radar_msg if "頂" in m or "超買" in m]) if any("頂" in m or "超買" in m for m in radar_msg) else "")
+            # 左側預判買入
+            elif (is_div or is_oversold) and not bool(latest['is_pin_bar']):
+                s_sig = 'PRE_BUY'
+                s_conf = 75 if is_div and is_oversold else 65
+                s_reason = "偵測到左側交易機會：" + " & ".join(radar_msg) if radar_msg else "左側預判"
             else:
                 s_sig = 'HOLD'
                 s_conf = 50
@@ -139,18 +167,40 @@ class LeadingIndicatorUpdater:
 
             signals[ticker] = {
                 'short_term': {'signal': s_sig, 'confidence': s_conf, 'reason': s_reason},
-                'radar': {'squeeze': is_squeeze, 'divergence': is_div, 'oversold': is_oversold, 'msg': " | ".join(radar_msg) if radar_msg else "雷達掃描中..."},
+                'radar': {
+                    'squeeze': is_squeeze,
+                    'divergence': is_div,
+                    'bear_divergence': is_bear_div,
+                    'oversold': is_oversold,
+                    'overbought': is_overbought,
+                    'msg': " | ".join(radar_msg) if radar_msg else "雷達掃描中..."
+                },
                 'price': float(round(latest['close'], 2)),
                 'vwap_dev': float(round(latest['vwap_dev'], 2)),
                 'anomaly': {'pin': bool(latest['is_pin_bar'])}
             }
-            
-            # 推送邏輯：新增 PRE_BUY 變盤預警
-            if ticker == 'GC=F':
+
+            # ✅ 推播邏輯：信心度 > 80% 才觸發，三台設備同步
+            if ticker == 'GC=F' and s_conf > CONFIDENCE_THRESHOLD:
                 if s_sig == 'PRE_BUY':
-                    self.send_push("🚨 變盤預警：準備買入！", f"偵測到{s_reason}。預計 24H 內發動。", ticker, is_leading=True)
+                    self.send_push(
+                        "🚨 變盤預警：準備買入！",
+                        f"信心: {s_conf}% | {s_reason} | 預計24H內發動",
+                        ticker, is_leading=True
+                    )
                 elif s_sig in ['BUY', 'STRONG_BUY']:
-                    self.send_push(f"📈 {ticker} 趨勢確認！", f"信心: {s_conf}% | 價格: ${latest['close']:.2f} | 進入右側交易區。", ticker)
+                    self.send_push(
+                        f"📈 黃金買進信號！({'強烈' if s_sig == 'STRONG_BUY' else '普通'})",
+                        f"信心: {s_conf}% | 價格: ${latest['close']:.2f} | {s_reason}",
+                        ticker
+                    )
+                elif s_sig in ['SELL', 'STRONG_SELL']:
+                    self.send_push(
+                        f"📉 黃金賣出信號！({'強烈' if s_sig == 'STRONG_SELL' else '普通'})",
+                        f"信心: {s_conf}% | 價格: ${latest['close']:.2f} | {s_reason}",
+                        ticker
+                    )
+
         return signals
 
     def update_html(self, html_file):
@@ -170,7 +220,7 @@ class LeadingIndicatorUpdater:
             new_script = f'{start_marker}const AUTO_DATA = {data_json};{end_marker}'
             new_content = content[:start_idx] + new_script + content[end_idx + len(end_marker):]
             with open(html_file, 'w', encoding='utf-8') as f: f.write(new_content)
-            print(f"[SUCCESS] v4.0 前瞻預警數據已更新")
+            print(f"[SUCCESS] v4.1 數據已更新")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -181,7 +231,7 @@ def main():
     parser.add_argument('--bark-key-3', default=None)
     args, _ = parser.parse_known_args()
     updater = LeadingIndicatorUpdater(
-        fred_api_key=args.fred_key, 
+        fred_api_key=args.fred_key,
         bark_keys=[args.bark_key_1, args.bark_key_2, args.bark_key_3]
     )
     updater.fetch_asset_data('GC=F', 'Gold Futures (24H)')
