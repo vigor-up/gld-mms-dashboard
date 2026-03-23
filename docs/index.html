@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLD-MMS 進階模型 | XGBoost 預測</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f5f5f7;
+            --card-bg: #ffffff;
+            --primary: #0071E3;
+            --success: #34c759;
+            --warning: #ff9500;
+            --danger: #ff3b30;
+            --text-main: #1d1d1f;
+            --text-sub: #86868b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin: 0;
+        }
+
+        header h1 span {
+            font-size: 0.9rem;
+            background: var(--primary);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 5px;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+
+        #dashboard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 600px) {
+            #dashboard {
+                grid-template-columns: 1fr 1fr;
+            }
+            .card.main {
+                grid-column: span 2;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+            transition: transform 0.2s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 0;
+            margin-bottom: 16px;
+            color: var(--text-sub);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 概率條 */
+        .prob-container {
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .prob-bar {
+            background: #f0f0f2;
+            border-radius: 12px;
+            height: 24px;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .prob-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease;
+            background-color: var(--primary);
+        }
+
+        #prob-text {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin: 10px 0;
+        }
+
+        #signal {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 5px 0;
+        }
+
+        #risk {
+            font-size: 0.95rem;
+            color: var(--text-sub);
+        }
+
+        /* 因子列表 */
+        #breakdown-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #breakdown-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f2;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+        }
+
+        #breakdown-list li:last-child {
+            border-bottom: none;
+        }
+
+        /* 市場快照 */
+        .snapshot-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .snapshot-val {
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: var(--text-sub);
+            font-size: 0.85rem;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-ai { background: #f0f0f2; color: var(--text-main); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GLD-MMS 核心預測 <span>v10.0</span></h1>
+        </header>
+
+        <div id="dashboard">
+            <!-- 主卡片：概率與信號 -->
+            <div class="card main">
+                <h3>AI 買進概率儀表板</h3>
+                <div class="prob-container">
+                    <p id="prob-text">--%</p>
+                    <div class="prob-bar">
+                        <div id="prob-fill" class="prob-fill"></div>
+                    </div>
+                    <p id="signal">正在載入數據...</p>
+                    <p id="risk">請稍候</p>
+                </div>
+            </div>
+
+            <!-- 因子貢獻 -->
+            <div class="card">
+                <h3>因子重要性 (Breakdown)</h3>
+                <ul id="breakdown-list">
+                    <li>載入中...</li>
+                </ul>
+            </div>
+
+            <!-- 市場快照 -->
+            <div class="card">
+                <h3>市場即時快照</h3>
+                <div class="snapshot-item">
+                    <span>黃金現貨 (GC=F)</span>
+                    <span id="gold-price" class="snapshot-val">--</span>
+                </div>
+                <div class="snapshot-item">
+                    <span>美元指數 (DXY)</span>
+                    <span id="dxy" class="snapshot-val">--</span>
+                </div>
+                <div class="snapshot-item" style="margin-top: 20px;">
+                    <span>AI 置信度</span>
+                    <span id="ai-confidence" class="badge badge-ai">--%</span>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            模型更新時間: <span id="timestamp">--</span><br>
+            © 2026 GLD-MMS XGBoost Engine v2.0 (Pure Pandas)
+        </footer>
+    </div>
+
+    <script>
+        const S3_URL = 'https://gld-mms-data-richtrong.s3.ap-northeast-1.amazonaws.com/data.json';
+        
+        function getProbColor(prob) {
+            if (prob >= 70) return '#34c759'; // Success Green
+            if (prob >= 60) return '#0071E3'; // Primary Blue
+            if (prob <= 30) return '#ff3b30'; // Danger Red
+            return '#ff9500'; // Warning Orange
+        }
+
+        async function update() {
+            try {
+                const res = await fetch(S3_URL + '?t=' + new Date().getTime());
+                if (!res.ok) throw new Error('無法取得數據');
+                const data = await res.json();
+                
+                const score = data.score || 0;
+                const color = getProbColor(score);
+
+                // 更新概率條
+                const fill = document.getElementById('prob-fill');
+                fill.style.width = score + '%';
+                fill.style.backgroundColor = color;
+
+                // 更新文字
+                document.getElementById('prob-text').innerText = `${score}%`;
+                document.getElementById('prob-text').style.color = color;
+                document.getElementById('signal').innerText = data.signal;
+                document.getElementById('risk').innerText = data.risk_tip;
+
+                // 更新因子列表
+                const list = document.getElementById('breakdown-list');
+                if (data.breakdown && data.breakdown.length > 0) {
+                    list.innerHTML = data.breakdown.map(item => {
+                        const parts = item.split(':');
+                        const label = parts[0];
+                        const val = parts[1] || '';
+                        return `<li><span>${label}</span><span style="font-weight:600">${val}</span></li>`;
+                    }).join('');
+                }
+
+                // 更新市場數據
+                document.getElementById('gold-price').innerText = `$${data.gold.price}`;
+                document.getElementById('dxy').innerText = data.macro.dxy;
+                document.getElementById('ai-confidence').innerText = `${data.ai_confidence}% Confidence`;
+                
+                // 更新時間
+                const date = new Date(data.timestamp);
+                document.getElementById('timestamp').innerText = date.toLocaleString('zh-TW', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+
+            } catch (err) {
+                console.error('Update failed:', err);
+                document.getElementById('signal').innerText = '數據更新暫時不可用';
+            }
+        }
+
+        // 初始更新與定時更新
+        update();
+        setInterval(update, 60000); // 每分鐘更新一次
+    </script>
+</body>
+</html>
