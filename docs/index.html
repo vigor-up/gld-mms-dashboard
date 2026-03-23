@@ -549,26 +549,59 @@
     </div>`;
   }
 
-  if (Object.keys(horizons).length || topFeats.length) {
+  if (Object.keys(model).length || topFeats.length) {
     const featRows = topFeats.map((f,i) => {
-      const pct = Math.round(f.importance);
+      // importance 可能是小數(0.25)或百分比(25.1)，統一轉成百分比
+      const raw = f.importance;
+      const pct = raw <= 1 ? Math.round(raw * 100) : Math.round(raw);
+      const barW = Math.min(100, pct * 2);
       return `<li class="feat-item">
         <span class="feat-rank">${i+1}</span>
         <span class="feat-name">${FEAT_NAMES[f.name] || f.name}</span>
-        <div class="feat-bar-wrap"><div class="feat-bar-bg"><div class="feat-bar-fill" style="width:${Math.min(100,pct*4)}%"></div></div></div>
+        <div class="feat-bar-wrap"><div class="feat-bar-bg"><div class="feat-bar-fill" style="width:${barW}%"></div></div></div>
         <span class="feat-pct">${pct}%</span>
       </li>`;
     }).join('');
 
-    mcEl.innerHTML = `
-      <div style="margin-bottom:16px">
+    // 相容新舊結構：有 horizons 用多框架，否則用 cv_win_rate 顯示 1D
+    let horizonsHtml = '';
+    if (horizons && Object.keys(horizons).length) {
+      horizonsHtml = `<div style="margin-bottom:16px">
         <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">📅 多時間框架漲跌機率預測</div>
         <div class="horizons-grid">
           ${horizonHtml('1d','隔日 (1D)')}
           ${horizonHtml('5d','5天後 (5D)')}
           ${horizonHtml('30d','30天後 (30D)')}
         </div>
-      </div>
+      </div>`;
+    } else if (model.cv_win_rate || lam.prob_up) {
+      // 舊結構：只有 1D 數據
+      const pu = lam.prob_up || 50;
+      const wr = model.cv_win_rate || '—';
+      const cls = pu >= 60 ? 'bull' : pu <= 40 ? 'bear' : 'neutral';
+      horizonsHtml = `<div style="margin-bottom:16px">
+        <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">📅 漲跌機率預測</div>
+        <div class="horizons-grid">
+          <div class="horizon-item">
+            <div class="horizon-label">隔日 (1D)</div>
+            <div class="horizon-prob ${cls}">${pu}%</div>
+            <div class="horizon-wr">CV勝率 <strong>${wr}%</strong></div>
+          </div>
+          <div class="horizon-item">
+            <div class="horizon-label">5天後 (5D)</div>
+            <div class="horizon-prob neutral">—</div>
+            <div class="horizon-wr">更新中...</div>
+          </div>
+          <div class="horizon-item">
+            <div class="horizon-label">30天後 (30D)</div>
+            <div class="horizon-prob neutral">—</div>
+            <div class="horizon-wr">更新中...</div>
+          </div>
+        </div>
+      </div>`;
+    }
+    mcEl.innerHTML = `
+      ${horizonsHtml}
       ${topFeats.length ? `
       <div>
         <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">🔝 最重要特徵 Top ${topFeats.length}（模型自動學習）</div>
