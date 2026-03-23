@@ -1,296 +1,340 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GLD-MMS 進階模型 | XGBoost 預測</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-color: #f5f5f7;
-            --card-bg: #ffffff;
-            --primary: #0071E3;
-            --success: #34c759;
-            --warning: #ff9500;
-            --danger: #ff3b30;
-            --text-main: #1d1d1f;
-            --text-sub: #86868b;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLD-MMS 貴金屬預警系統</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --sub: #8b949e;
+    --buy: #3fb950;
+    --sell: #f85149;
+    --hold: #d29922;
+    --pre: #58a6ff;
+    --gold: #f0b429;
+    --silver: #c0c0c0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 20px;
-            line-height: 1.5;
-        }
+  /* Header */
+  .header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .header-title { display: flex; align-items: center; gap: 10px; }
+  .header-title h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+  .header-title .badge { background: var(--gold); color: #000; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; letter-spacing: 1px; }
+  .update-time { font-size: 12px; color: var(--sub); }
+  .live-dot { display: inline-block; width: 7px; height: 7px; background: var(--buy); border-radius: 50%; margin-right: 5px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
+  /* Main layout */
+  .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
 
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+  /* Asset cards */
+  .assets-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 600px) { .assets-grid { grid-template-columns: 1fr; } }
 
-        header h1 {
-            font-size: 2.2rem;
-            font-weight: 800;
-            margin: 0;
-        }
+  .asset-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
+  .asset-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .asset-card.gold::before { background: var(--gold); }
+  .asset-card.silver::before { background: var(--silver); }
 
-        header h1 span {
-            font-size: 0.9rem;
-            background: var(--primary);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 5px;
-            vertical-align: middle;
-            margin-left: 10px;
-        }
+  .asset-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .asset-name { font-size: 13px; color: var(--sub); font-weight: 500; letter-spacing: 0.5px; }
+  .asset-ticker { font-size: 11px; color: var(--sub); margin-top: 2px; }
+  .asset-price { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin: 4px 0; }
+  .asset-price.gold { color: var(--gold); }
+  .asset-price.silver { color: var(--silver); }
 
-        #dashboard {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
+  /* Signal badge */
+  .signal-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; }
+  .signal-badge.BUY, .signal-badge.STRONG_BUY { background: rgba(63,185,80,0.15); color: var(--buy); border: 1px solid rgba(63,185,80,0.3); }
+  .signal-badge.SELL, .signal-badge.STRONG_SELL { background: rgba(248,81,73,0.15); color: var(--sell); border: 1px solid rgba(248,81,73,0.3); }
+  .signal-badge.HOLD { background: rgba(210,153,34,0.15); color: var(--hold); border: 1px solid rgba(210,153,34,0.3); }
+  .signal-badge.PRE_BUY { background: rgba(88,166,255,0.15); color: var(--pre); border: 1px solid rgba(88,166,255,0.3); }
+  .signal-icon { font-size: 16px; }
 
-        @media (min-width: 600px) {
-            #dashboard {
-                grid-template-columns: 1fr 1fr;
-            }
-            .card.main {
-                grid-column: span 2;
-            }
-        }
+  /* Confidence bar */
+  .confidence-section { margin: 14px 0; }
+  .confidence-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--sub); margin-bottom: 6px; }
+  .confidence-label span:last-child { font-weight: 600; color: var(--text); }
+  .conf-track { background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; }
+  .conf-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .conf-fill.high { background: var(--buy); }
+  .conf-fill.mid { background: var(--hold); }
+  .conf-fill.low { background: var(--sub); }
 
-        .card {
-            background: var(--card-bg);
-            border-radius: 18px;
-            padding: 24px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.04);
-            transition: transform 0.2s ease;
-        }
+  /* Reason */
+  .reason { font-size: 12px; color: var(--sub); line-height: 1.5; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; margin: 10px 0; border-left: 3px solid var(--border); }
+  .reason.BUY, .reason.STRONG_BUY { border-left-color: var(--buy); }
+  .reason.SELL, .reason.STRONG_SELL { border-left-color: var(--sell); }
+  .reason.PRE_BUY { border-left-color: var(--pre); }
 
-        .card:hover {
-            transform: translateY(-2px);
-        }
+  /* Indicators */
+  .indicators { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+  .ind { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 12px; }
+  .ind-name { font-size: 10px; color: var(--sub); font-weight: 600; letter-spacing: 0.8px; margin-bottom: 4px; }
+  .ind-value { font-size: 14px; font-weight: 700; }
+  .ind-value.positive { color: var(--buy); }
+  .ind-value.negative { color: var(--sell); }
+  .ind-value.neutral { color: var(--hold); }
 
-        h3 {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-top: 0;
-            margin-bottom: 16px;
-            color: var(--text-sub);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
+  /* Radar */
+  .radar { margin-top: 12px; }
+  .radar-title { font-size: 11px; color: var(--sub); font-weight: 600; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .radar-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .radar-tag { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(88,166,255,0.1); color: var(--pre); border: 1px solid rgba(88,166,255,0.2); }
+  .radar-tag.warn { background: rgba(248,81,73,0.1); color: var(--sell); border-color: rgba(248,81,73,0.2); }
+  .radar-tag.none { color: var(--sub); background: transparent; border-color: var(--border); }
 
-        /* 概率條 */
-        .prob-container {
-            margin: 20px 0;
-            text-align: center;
-        }
+  /* Legend / Guide */
+  .guide { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+  .guide h2 { font-size: 14px; font-weight: 700; margin-bottom: 16px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+  .guide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .guide-item { padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--border); }
+  .guide-item-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .guide-item-desc { font-size: 11px; color: var(--sub); line-height: 1.6; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
-        .prob-bar {
-            background: #f0f0f2;
-            border-radius: 12px;
-            height: 24px;
-            width: 100%;
-            overflow: hidden;
-            position: relative;
-        }
+  /* Signal legend */
+  .signal-legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-bottom: 16px; }
+  .sl-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); }
+  .sl-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .sl-desc { font-size: 11px; color: var(--sub); }
 
-        .prob-fill {
-            height: 100%;
-            width: 0%;
-            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.5s ease;
-            background-color: var(--primary);
-        }
+  /* Footer */
+  .footer { text-align: center; padding: 20px; font-size: 11px; color: var(--sub); border-top: 1px solid var(--border); }
 
-        #prob-text {
-            font-size: 2.5rem;
-            font-weight: 800;
-            margin: 10px 0;
-        }
+  /* Empty state */
+  .empty { text-align: center; padding: 40px; color: var(--sub); }
 
-        #signal {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin: 5px 0;
-        }
-
-        #risk {
-            font-size: 0.95rem;
-            color: var(--text-sub);
-        }
-
-        /* 因子列表 */
-        #breakdown-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        #breakdown-list li {
-            padding: 12px 0;
-            border-bottom: 1px solid #f0f0f2;
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.95rem;
-        }
-
-        #breakdown-list li:last-child {
-            border-bottom: none;
-        }
-
-        /* 市場快照 */
-        .snapshot-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .snapshot-val {
-            font-weight: 700;
-            font-size: 1.2rem;
-        }
-
-        footer {
-            text-align: center;
-            margin-top: 40px;
-            color: var(--text-sub);
-            font-size: 0.85rem;
-        }
-
-        .badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        .badge-ai { background: #f0f0f2; color: var(--text-main); }
-    </style>
+  /* Threshold note */
+  .threshold-note { font-size: 11px; color: var(--sub); text-align: center; margin-top: 8px; }
+  .threshold-note span { color: var(--buy); font-weight: 600; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>GLD-MMS 核心預測 <span>v10.0</span></h1>
-        </header>
 
-        <div id="dashboard">
-            <!-- 主卡片：概率與信號 -->
-            <div class="card main">
-                <h3>AI 買進概率儀表板</h3>
-                <div class="prob-container">
-                    <p id="prob-text">--%</p>
-                    <div class="prob-bar">
-                        <div id="prob-fill" class="prob-fill"></div>
-                    </div>
-                    <p id="signal">正在載入數據...</p>
-                    <p id="risk">請稍候</p>
-                </div>
-            </div>
+<div class="header">
+  <div class="header-title">
+    <h1>🏅 GLD-MMS 貴金屬預警</h1>
+    <span class="badge">AI SIGNALS</span>
+  </div>
+  <div class="update-time" id="update-time"><span class="live-dot"></span>載入中...</div>
+</div>
 
-            <!-- 因子貢獻 -->
-            <div class="card">
-                <h3>因子重要性 (Breakdown)</h3>
-                <ul id="breakdown-list">
-                    <li>載入中...</li>
-                </ul>
-            </div>
+<div class="container">
 
-            <!-- 市場快照 -->
-            <div class="card">
-                <h3>市場即時快照</h3>
-                <div class="snapshot-item">
-                    <span>黃金現貨 (GC=F)</span>
-                    <span id="gold-price" class="snapshot-val">--</span>
-                </div>
-                <div class="snapshot-item">
-                    <span>美元指數 (DXY)</span>
-                    <span id="dxy" class="snapshot-val">--</span>
-                </div>
-                <div class="snapshot-item" style="margin-top: 20px;">
-                    <span>AI 置信度</span>
-                    <span id="ai-confidence" class="badge badge-ai">--%</span>
-                </div>
-            </div>
-        </div>
+  <!-- Asset Cards -->
+  <div class="assets-grid" id="assets-grid">
+    <div class="empty">📡 等待資料載入...</div>
+  </div>
 
-        <footer>
-            模型更新時間: <span id="timestamp">--</span><br>
-            © 2026 GLD-MMS XGBoost Engine v2.0 (Pure Pandas)
-        </footer>
+  <!-- Beginner Guide -->
+  <div class="guide">
+    <h2>📖 指標說明 — 新手看這裡</h2>
+
+    <div class="signal-legend">
+      <div class="sl-item">
+        <span class="sl-badge" style="background:rgba(63,185,80,0.2);color:#3fb950">STRONG BUY</span>
+        <span class="sl-desc">強力買進 🚀</span>
+      </div>
+      <div class="sl-item">
+        <span class="sl-badge" style="background:rgba(63,185,80,0.15);color:#3fb950">BUY</span>
+        <span class="sl-desc">買進信號 📈</span>
+      </div>
+      <div class="sl-item">
+        <span class="sl-badge" style="background:rgba(88,166,255,0.15);color:#58a6ff">PRE BUY</span>
+        <span class="sl-desc">準備買進 👀</span>
+      </div>
+      <div class="sl-item">
+        <span class="sl-badge" style="background:rgba(210,153,34,0.15);color:#d29922">HOLD</span>
+        <span class="sl-desc">觀望等待 ⏳</span>
+      </div>
+      <div class="sl-item">
+        <span class="sl-badge" style="background:rgba(248,81,73,0.15);color:#f85149">SELL</span>
+        <span class="sl-desc">賣出信號 📉</span>
+      </div>
+      <div class="sl-item">
+        <span class="sl-badge" style="background:rgba(248,81,73,0.2);color:#f85149">STRONG SELL</span>
+        <span class="sl-desc">強力賣出 🔴</span>
+      </div>
     </div>
 
-    <script>
-        const S3_URL = 'https://gld-mms-data-richtrong.s3.ap-northeast-1.amazonaws.com/data.json';
-        
-        function getProbColor(prob) {
-            if (prob >= 70) return '#34c759'; // Success Green
-            if (prob >= 60) return '#0071E3'; // Primary Blue
-            if (prob <= 30) return '#ff3b30'; // Danger Red
-            return '#ff9500'; // Warning Orange
-        }
+    <div class="guide-grid">
+      <div class="guide-item">
+        <div class="guide-item-title"><span class="dot" style="background:#58a6ff"></span>信心度 (Confidence)</div>
+        <div class="guide-item-desc">AI 對目前信號的把握程度。<strong style="color:#3fb950">&gt;80%</strong> 才會推播通知，代表信號可信度高。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-title"><span class="dot" style="background:#f0b429"></span>VWAP 乖離率</div>
+        <div class="guide-item-desc">現價偏離機構平均成本的幅度。<strong style="color:#3fb950">正值</strong>=價格偏高，<strong style="color:#f85149">負值過深</strong>=可能超跌反彈。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-title"><span class="dot" style="background:#3fb950"></span>OBV 能量</div>
+        <div class="guide-item-desc">成交量方向累積。OBV 上升 = 資金持續流入（看漲）；下降 = 資金撤出（看跌）。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-title"><span class="dot" style="background:#d29922"></span>ATR 波動擠壓</div>
+        <div class="guide-item-desc">市場波動降至歷史低點，通常預示即將出現大行情（突破或崩跌）。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-title"><span class="dot" style="background:#58a6ff"></span>底背離</div>
+        <div class="guide-item-desc">價格下跌但 OBV 上升 = 聰明錢悄悄進場，底部反轉機率高。</div>
+      </div>
+      <div class="guide-item">
+        <div class="guide-item-title"><span class="dot" style="background:#f85149"></span>頂背離</div>
+        <div class="guide-item-desc">價格上漲但 OBV 下降 = 主力悄悄出貨，頂部反轉機率高。</div>
+      </div>
+    </div>
 
-        async function update() {
-            try {
-                const res = await fetch(S3_URL + '?t=' + new Date().getTime());
-                if (!res.ok) throw new Error('無法取得數據');
-                const data = await res.json();
-                
-                const score = data.score || 0;
-                const color = getProbColor(score);
+    <div class="threshold-note" style="margin-top:14px">
+      📱 Bark 推播門檻：信心度 <span>&gt; 80%</span> 且為買進/賣出信號時自動推送至三台設備
+    </div>
+  </div>
 
-                // 更新概率條
-                const fill = document.getElementById('prob-fill');
-                fill.style.width = score + '%';
-                fill.style.backgroundColor = color;
+</div>
 
-                // 更新文字
-                document.getElementById('prob-text').innerText = `${score}%`;
-                document.getElementById('prob-text').style.color = color;
-                document.getElementById('signal').innerText = data.signal;
-                document.getElementById('risk').innerText = data.risk_tip;
+<div class="footer">
+  GLD-MMS v4.1 · 資料來源：Yahoo Finance · 每5分鐘更新（週一至週五）<br>
+  本頁僅供參考，不構成投資建議
+</div>
 
-                // 更新因子列表
-                const list = document.getElementById('breakdown-list');
-                if (data.breakdown && data.breakdown.length > 0) {
-                    list.innerHTML = data.breakdown.map(item => {
-                        const parts = item.split(':');
-                        const label = parts[0];
-                        const val = parts[1] || '';
-                        return `<li><span>${label}</span><span style="font-weight:600">${val}</span></li>`;
-                    }).join('');
-                }
+<script id="data-source">const AUTO_DATA = {};</script>
+<script>
+(function() {
+  const data = typeof AUTO_DATA !== 'undefined' ? AUTO_DATA : {};
+  const signals = data.signals || {};
+  const assets_raw = data.assets || {};
+  const ts = data.timestamp;
 
-                // 更新市場數據
-                document.getElementById('gold-price').innerText = `$${data.gold.price}`;
-                document.getElementById('dxy').innerText = data.macro.dxy;
-                document.getElementById('ai-confidence').innerText = `${data.ai_confidence}% Confidence`;
-                
-                // 更新時間
-                const date = new Date(data.timestamp);
-                document.getElementById('timestamp').innerText = date.toLocaleString('zh-TW', {
-                    year: 'numeric', month: '2-digit', day: '2-digit',
-                    hour: '2-digit', minute: '2-digit', second: '2-digit'
-                });
+  // Update time
+  if (ts) {
+    const d = new Date(ts);
+    document.getElementById('update-time').innerHTML =
+      '<span class="live-dot"></span>更新：' + d.toLocaleString('zh-TW', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
 
-            } catch (err) {
-                console.error('Update failed:', err);
-                document.getElementById('signal').innerText = '數據更新暫時不可用';
-            }
-        }
+  const ASSET_CONFIG = {
+    'GC=F': { label: '黃金期貨', cls: 'gold', emoji: '🥇', unit: 'USD/oz' },
+    'SI=F': { label: '白銀期貨', cls: 'silver', emoji: '🥈', unit: 'USD/oz' },
+    'GLD':  { label: 'GLD ETF', cls: 'gold', emoji: '📊', unit: 'USD' }
+  };
 
-        // 初始更新與定時更新
-        update();
-        setInterval(update, 60000); // 每分鐘更新一次
-    </script>
+  const SIGNAL_LABELS = {
+    'STRONG_BUY': { icon: '🚀', text: '強力買進' },
+    'BUY':        { icon: '📈', text: '買進' },
+    'PRE_BUY':    { icon: '👀', text: '準備買進' },
+    'HOLD':       { icon: '⏳', text: '觀望' },
+    'SELL':       { icon: '📉', text: '賣出' },
+    'STRONG_SELL':{ icon: '🔴', text: '強力賣出' }
+  };
+
+  function confClass(c) {
+    if (c >= 80) return 'high';
+    if (c >= 60) return 'mid';
+    return 'low';
+  }
+
+  function getLatest(ticker) {
+    const rows = assets_raw[ticker];
+    if (!rows || !rows.length) return null;
+    return rows[rows.length - 1];
+  }
+
+  function renderCard(ticker) {
+    const cfg = ASSET_CONFIG[ticker] || { label: ticker, cls: 'gold', emoji: '📊', unit: '' };
+    const sig = signals[ticker];
+    if (!sig) return '';
+
+    const st = sig.short_term || {};
+    const radar = sig.radar || {};
+    const signal = st.signal || 'HOLD';
+    const conf = st.confidence || 0;
+    const reason = st.reason || '';
+    const price = sig.price || 0;
+    const vwap_dev = sig.vwap_dev || 0;
+    const slabel = SIGNAL_LABELS[signal] || { icon: '⏳', text: signal };
+    const latest = getLatest(ticker);
+    const obvVal = latest ? latest.obv : null;
+    const obvMa = latest ? latest.obv_ma5 : null;
+
+    const radarTags = [];
+    if (radar.squeeze) radarTags.push({ text: '⚡ 波動擠壓', warn: false });
+    if (radar.divergence) radarTags.push({ text: '↗ 底背離', warn: false });
+    if (radar.bear_divergence) radarTags.push({ text: '↘ 頂背離', warn: true });
+    if (radar.oversold) radarTags.push({ text: '💧 超跌', warn: false });
+    if (radar.overbought) radarTags.push({ text: '🔥 超買', warn: true });
+
+    const obvTrend = (obvVal !== null && obvMa !== null)
+      ? (obvVal > obvMa ? '<span class="ind-value positive">上升 ▲</span>' : '<span class="ind-value negative">下降 ▼</span>')
+      : '<span class="ind-value neutral">-</span>';
+
+    const vwapClass = vwap_dev > 0.5 ? 'positive' : vwap_dev < -0.5 ? 'negative' : 'neutral';
+
+    return `
+    <div class="asset-card ${cfg.cls}">
+      <div class="asset-header">
+        <div>
+          <div class="asset-name">${cfg.emoji} ${cfg.label}</div>
+          <div class="asset-ticker">${ticker} · ${cfg.unit}</div>
+          <div class="asset-price ${cfg.cls}">$${price.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
+        </div>
+        <div>
+          <div class="signal-badge ${signal}"><span class="signal-icon">${slabel.icon}</span>${slabel.text}</div>
+        </div>
+      </div>
+
+      <div class="confidence-section">
+        <div class="confidence-label">
+          <span>AI 信心度</span>
+          <span>${conf}%${conf > 80 ? ' 🔔 推播中' : ''}</span>
+        </div>
+        <div class="conf-track">
+          <div class="conf-fill ${confClass(conf)}" style="width:${conf}%"></div>
+        </div>
+      </div>
+
+      <div class="reason ${signal}">💬 ${reason}</div>
+
+      <div class="indicators">
+        <div class="ind">
+          <div class="ind-name">VWAP 乖離率</div>
+          <div class="ind-value ${vwapClass}">${vwap_dev > 0 ? '+' : ''}${vwap_dev.toFixed(2)}%</div>
+        </div>
+        <div class="ind">
+          <div class="ind-name">OBV 能量方向</div>
+          <div>${obvTrend}</div>
+        </div>
+      </div>
+
+      ${radarTags.length ? `
+      <div class="radar">
+        <div class="radar-title">🔭 前瞻雷達偵測</div>
+        <div class="radar-tags">
+          ${radarTags.map(t => `<span class="radar-tag ${t.warn ? 'warn' : ''}">${t.text}</span>`).join('')}
+        </div>
+      </div>` : `
+      <div class="radar">
+        <div class="radar-tags"><span class="radar-tag none">雷達掃描中...</span></div>
+      </div>`}
+    </div>`;
+  }
+
+  const tickers = ['GC=F', 'SI=F', 'GLD'];
+  const cards = tickers.map(renderCard).filter(Boolean).join('');
+  const grid = document.getElementById('assets-grid');
+  if (cards) {
+    grid.style.gridTemplateColumns = tickers.filter(t => signals[t]).length === 2
+      ? '1fr 1fr' : 'repeat(auto-fill, minmax(280px, 1fr))';
+    grid.innerHTML = cards;
+  } else {
+    grid.innerHTML = '<div class="empty">📡 尚無資料，等待下次更新...</div>';
+  }
+})();
+</script>
 </body>
 </html>
