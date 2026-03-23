@@ -272,7 +272,7 @@ class GldMmsUpdater:
     # ── Step 6: 更新 HTML ──────────────────────────────────────
     def update_html(self, html_file):
         data = {
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.utcnow().isoformat() + 'Z',  # 明確標示 UTC
             'assets': self.assets,
             'macro': self.macro,
             'signals': self.calculate_signals(),
@@ -281,7 +281,10 @@ class GldMmsUpdater:
                 'signal': self.lambda_result.get('signal'),
                 'status': self.lambda_result.get('status', '未連線'),
                 'smart_money': self.lambda_result.get('smart_money', {}),
-                'performance': self.lambda_result.get('performance', {})
+                'performance': self.lambda_result.get('performance', {}),
+                'model': self.lambda_result.get('model', {}),
+                'prob_up': self.lambda_result.get('prob_up'),
+                'prob_dn': self.lambda_result.get('prob_dn'),
             }
         }
         with open(html_file, 'r', encoding='utf-8') as f:

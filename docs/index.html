@@ -181,7 +181,35 @@
   }
   .section-title span { flex: 1; height: 1px; background: var(--border); display: block; margin-left: 8px; }
 
-  /* ── Guide ── */
+  /* ── AI Model Card ── */
+  .model-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .horizons-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 18px; }
+  .horizon-item { background: #f7fafc; border-radius: 12px; padding: 14px 12px; border: 1.5px solid var(--border); text-align: center; }
+  .horizon-label { font-size: 12px; color: var(--sub); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .horizon-prob { font-size: 26px; font-weight: 800; line-height: 1; }
+  .horizon-prob.bull { color: var(--buy); }
+  .horizon-prob.bear { color: var(--sell); }
+  .horizon-prob.neutral { color: var(--hold); }
+  .horizon-wr { font-size: 13px; color: var(--sub); margin-top: 4px; }
+  .horizon-wr strong { color: var(--text); }
+  .feat-list { list-style: none; }
+  .feat-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .feat-item:last-child { border-bottom: none; }
+  .feat-rank { font-size: 14px; font-weight: 800; color: var(--sub); width: 22px; flex-shrink: 0; }
+  .feat-name { font-size: 15px; font-weight: 600; flex: 1; }
+  .feat-bar-wrap { width: 100px; flex-shrink: 0; }
+  .feat-bar-bg { background: #edf2f7; border-radius: 6px; height: 8px; }
+  .feat-bar-fill { background: linear-gradient(90deg, #4299e1, #2b6cb0); height: 8px; border-radius: 6px; }
+  .feat-pct { font-size: 13px; font-weight: 700; color: var(--pre); width: 40px; text-align: right; flex-shrink: 0; }
+  .model-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .model-tag { background: var(--pre-bg); color: var(--pre); border: 1px solid var(--pre-border); border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
   .guide-card {
     background: var(--card);
     border: 1.5px solid var(--border);
@@ -279,6 +307,12 @@
   <div class="section-title">📊 即時信號總覽 <span></span></div>
   <div class="assets-grid" id="assets-grid">
     <div class="empty-state">📡 資料載入中，請稍候...</div>
+  </div>
+
+  <!-- AI Model Analysis -->
+  <div class="section-title">🧠 XGBoost AI 模型分析 <span></span></div>
+  <div class="model-card" id="model-card">
+    <div class="empty-state" style="padding:24px">📡 等待模型數據...</div>
   </div>
 
   <!-- Signal Guide -->
@@ -484,6 +518,74 @@
     grid.innerHTML = cards;
   } else {
     grid.innerHTML = '<div class="empty-state">📡 尚無資料，等待下次自動更新（每 5 分鐘）</div>';
+  }
+
+  // ── AI Model Card ──────────────────────────────────────────
+  const FEAT_NAMES = {
+    'ret_1d':'1日報酬率','ret_3d':'3日報酬率','ret_5d':'5日報酬率','ret_10d':'10日報酬率',
+    'ma_dev5':'MA5乖離率','ma_dev20':'MA20乖離率','ma_cross':'均線交叉',
+    'rsi_norm':'RSI超買超賣','obv_trend':'OBV短期趨勢','obv_div':'OBV長期背離',
+    'vwap_dev':'VWAP乖離率','atr_ratio':'ATR波動率','atr_trend':'ATR擴張',
+    'vol_ratio':'成交量比','vol_trend':'成交量趨勢','bull_div':'底背離','bear_div':'頂背離'
+  };
+  const lam = data.lambda || {};
+  const model = lam.model || {};
+  const horizons = model.horizons || {};
+  const topFeats = model.top_features || [];
+  const perf = lam.performance || {};
+  const smartMoney = lam.smart_money || {};
+  const mcEl = document.getElementById('model-card');
+
+  function horizonHtml(key, label) {
+    const h = horizons[key] || {};
+    const pu = h.prob_up;
+    const wr = h.cv_win_rate;
+    if (pu === null || pu === undefined) return `<div class="horizon-item"><div class="horizon-label">${label}</div><div class="horizon-prob neutral">—</div><div class="horizon-wr">數據不足</div></div>`;
+    const cls = pu >= 60 ? 'bull' : pu <= 40 ? 'bear' : 'neutral';
+    return `<div class="horizon-item">
+      <div class="horizon-label">${label}</div>
+      <div class="horizon-prob ${cls}">${pu}%</div>
+      <div class="horizon-wr">CV勝率 <strong>${wr !== null ? wr+'%' : '—'}</strong></div>
+    </div>`;
+  }
+
+  if (Object.keys(horizons).length || topFeats.length) {
+    const featRows = topFeats.map((f,i) => {
+      const pct = Math.round(f.importance);
+      return `<li class="feat-item">
+        <span class="feat-rank">${i+1}</span>
+        <span class="feat-name">${FEAT_NAMES[f.name] || f.name}</span>
+        <div class="feat-bar-wrap"><div class="feat-bar-bg"><div class="feat-bar-fill" style="width:${Math.min(100,pct*4)}%"></div></div></div>
+        <span class="feat-pct">${pct}%</span>
+      </li>`;
+    }).join('');
+
+    mcEl.innerHTML = `
+      <div style="margin-bottom:16px">
+        <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">📅 多時間框架漲跌機率預測</div>
+        <div class="horizons-grid">
+          ${horizonHtml('1d','隔日 (1D)')}
+          ${horizonHtml('5d','5天後 (5D)')}
+          ${horizonHtml('30d','30天後 (30D)')}
+        </div>
+      </div>
+      ${topFeats.length ? `
+      <div>
+        <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">🔝 最重要特徵 Top ${topFeats.length}（模型自動學習）</div>
+        <ul class="feat-list">${featRows}</ul>
+      </div>` : ''}
+      <div class="model-meta">
+        <span class="model-tag">🤖 ${model.type || 'XGBoost'}</span>
+        <span class="model-tag">📊 ${model.train_samples || '—'} 筆訓練數據</span>
+        <span class="model-tag">🔢 ${model.features || '—'} 個特徵</span>
+        <span class="model-tag">📈 ETF: ${smartMoney.etf_flow || '—'}</span>
+        ${perf.sharpe ? `<span class="model-tag">⚡ Sharpe: ${perf.sharpe}</span>` : ''}
+      </div>
+      <div style="font-size:13px;color:var(--sub);margin-top:12px;padding:10px 12px;background:#f7fafc;border-radius:8px">
+        ⚠️ <strong>免責聲明：</strong>XGBoost 機率為統計模型輸出，基於歷史數據訓練，不保證未來表現。漲跌機率 ≥ 72% 才觸發推播。
+      </div>`;
+  } else {
+    mcEl.innerHTML = '<div class="empty-state" style="padding:24px">📡 等待 Lambda 模型數據...</div>';
   }
 })();
 </script>
