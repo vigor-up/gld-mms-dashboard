@@ -6,247 +6,399 @@
 <title>GLD-MMS 貴金屬預警系統</title>
 <style>
   :root {
-    --bg: #0d1117;
-    --card: #161b22;
-    --border: #30363d;
-    --text: #e6edf3;
-    --sub: #8b949e;
-    --buy: #3fb950;
-    --sell: #f85149;
-    --hold: #d29922;
-    --pre: #58a6ff;
-    --gold: #f0b429;
-    --silver: #c0c0c0;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1a202c;
+    --sub: #718096;
+    --buy: #22863a;
+    --buy-bg: #f0fff4;
+    --buy-border: #c6f6d5;
+    --sell: #c53030;
+    --sell-bg: #fff5f5;
+    --sell-border: #fed7d7;
+    --hold: #b7791f;
+    --hold-bg: #fffff0;
+    --hold-border: #fefcbf;
+    --pre: #2b6cb0;
+    --pre-bg: #ebf8ff;
+    --pre-border: #bee3f8;
+    --gold: #d69e2e;
+    --silver: #718096;
+    --accent: #2d3748;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
 
-  /* Header */
-  .header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-  .header-title { display: flex; align-items: center; gap: 10px; }
-  .header-title h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
-  .header-title .badge { background: var(--gold); color: #000; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; letter-spacing: 1px; }
-  .update-time { font-size: 12px; color: var(--sub); }
-  .live-dot { display: inline-block; width: 7px; height: 7px; background: var(--buy); border-radius: 50%; margin-right: 5px; animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+    color: #fff;
+    padding: 20px 16px 18px;
+  }
+  .header-inner { max-width: 900px; margin: 0 auto; }
+  .header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
+  .header h1 small { display: block; font-size: 13px; font-weight: 400; opacity: 0.7; margin-top: 3px; }
+  .header-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .update-badge {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .live-dot { width: 7px; height: 7px; background: #48bb78; border-radius: 50%; animation: pulse 2s infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .push-badge {
+    background: rgba(72,187,120,0.2);
+    border: 1px solid rgba(72,187,120,0.4);
+    color: #9ae6b4;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
 
-  /* Main layout */
-  .container { max-width: 960px; margin: 0 auto; padding: 20px 16px; }
+  /* ── Layout ── */
+  .container { max-width: 900px; margin: 0 auto; padding: 20px 14px 40px; }
 
-  /* Asset cards */
-  .assets-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
-  @media (max-width: 600px) { .assets-grid { grid-template-columns: 1fr; } }
+  /* ── Asset Cards ── */
+  .assets-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (min-width: 640px) { .assets-grid { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 900px) { .assets-grid { grid-template-columns: 1fr 1fr 1fr; } }
 
-  .asset-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
-  .asset-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-  .asset-card.gold::before { background: var(--gold); }
-  .asset-card.silver::before { background: var(--silver); }
-
-  .asset-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-  .asset-name { font-size: 13px; color: var(--sub); font-weight: 500; letter-spacing: 0.5px; }
-  .asset-ticker { font-size: 11px; color: var(--sub); margin-top: 2px; }
-  .asset-price { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin: 4px 0; }
+  .asset-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .card-top {
+    padding: 16px 18px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  }
+  .card-top-left {}
+  .asset-label { font-size: 13px; color: var(--sub); font-weight: 600; letter-spacing: 0.3px; }
+  .asset-price {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin: 4px 0 2px;
+  }
   .asset-price.gold { color: var(--gold); }
   .asset-price.silver { color: var(--silver); }
+  .asset-unit { font-size: 11px; color: var(--sub); }
 
-  /* Signal badge */
-  .signal-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; }
-  .signal-badge.BUY, .signal-badge.STRONG_BUY { background: rgba(63,185,80,0.15); color: var(--buy); border: 1px solid rgba(63,185,80,0.3); }
-  .signal-badge.SELL, .signal-badge.STRONG_SELL { background: rgba(248,81,73,0.15); color: var(--sell); border: 1px solid rgba(248,81,73,0.3); }
-  .signal-badge.HOLD { background: rgba(210,153,34,0.15); color: var(--hold); border: 1px solid rgba(210,153,34,0.3); }
-  .signal-badge.PRE_BUY { background: rgba(88,166,255,0.15); color: var(--pre); border: 1px solid rgba(88,166,255,0.3); }
-  .signal-icon { font-size: 16px; }
+  /* Signal */
+  .signal-wrap { flex-shrink: 0; text-align: right; }
+  .signal-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 7px 14px;
+    border-radius: 24px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    border: 1.5px solid;
+    white-space: nowrap;
+  }
+  .signal-badge.STRONG_BUY, .signal-badge.BUY { background: var(--buy-bg); color: var(--buy); border-color: var(--buy-border); }
+  .signal-badge.STRONG_SELL, .signal-badge.SELL { background: var(--sell-bg); color: var(--sell); border-color: var(--sell-border); }
+  .signal-badge.HOLD { background: var(--hold-bg); color: var(--hold); border-color: var(--hold-border); }
+  .signal-badge.PRE_BUY { background: var(--pre-bg); color: var(--pre); border-color: var(--pre-border); }
 
-  /* Confidence bar */
-  .confidence-section { margin: 14px 0; }
-  .confidence-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--sub); margin-bottom: 6px; }
-  .confidence-label span:last-child { font-weight: 600; color: var(--text); }
-  .conf-track { background: var(--border); border-radius: 4px; height: 6px; overflow: hidden; }
-  .conf-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
-  .conf-fill.high { background: var(--buy); }
-  .conf-fill.mid { background: var(--hold); }
-  .conf-fill.low { background: var(--sub); }
+  /* Card body */
+  .card-body { padding: 14px 18px 16px; }
+
+  /* Confidence */
+  .conf-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .conf-label { font-size: 12px; color: var(--sub); font-weight: 600; }
+  .conf-num { font-size: 14px; font-weight: 800; }
+  .conf-num.high { color: var(--buy); }
+  .conf-num.mid { color: var(--hold); }
+  .conf-num.low { color: var(--sub); }
+  .conf-track { height: 7px; background: #edf2f7; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+  .conf-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease; }
+  .conf-fill.high { background: linear-gradient(90deg, #48bb78, #38a169); }
+  .conf-fill.mid { background: linear-gradient(90deg, #ecc94b, #d69e2e); }
+  .conf-fill.low { background: #cbd5e0; }
+  .push-active { font-size: 11px; color: var(--buy); font-weight: 700; }
 
   /* Reason */
-  .reason { font-size: 12px; color: var(--sub); line-height: 1.5; padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; margin: 10px 0; border-left: 3px solid var(--border); }
-  .reason.BUY, .reason.STRONG_BUY { border-left-color: var(--buy); }
-  .reason.SELL, .reason.STRONG_SELL { border-left-color: var(--sell); }
-  .reason.PRE_BUY { border-left-color: var(--pre); }
+  .reason-box {
+    background: #f7fafc;
+    border-left: 4px solid #e2e8f0;
+    border-radius: 0 8px 8px 0;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--sub);
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .reason-box.BUY, .reason-box.STRONG_BUY { border-left-color: #68d391; background: #f0fff4; color: #276749; }
+  .reason-box.SELL, .reason-box.STRONG_SELL { border-left-color: #fc8181; background: #fff5f5; color: #9b2c2c; }
+  .reason-box.PRE_BUY { border-left-color: #63b3ed; background: #ebf8ff; color: #2c5282; }
 
   /* Indicators */
-  .indicators { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
-  .ind { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 12px; }
-  .ind-name { font-size: 10px; color: var(--sub); font-weight: 600; letter-spacing: 0.8px; margin-bottom: 4px; }
-  .ind-value { font-size: 14px; font-weight: 700; }
-  .ind-value.positive { color: var(--buy); }
-  .ind-value.negative { color: var(--sell); }
-  .ind-value.neutral { color: var(--hold); }
+  .indicators { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .ind {
+    background: #f7fafc;
+    border-radius: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+  }
+  .ind-name { font-size: 10px; color: var(--sub); font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 3px; }
+  .ind-val { font-size: 15px; font-weight: 800; }
+  .ind-val.up { color: var(--buy); }
+  .ind-val.down { color: var(--sell); }
+  .ind-val.neutral { color: var(--hold); }
 
-  /* Radar */
-  .radar { margin-top: 12px; }
-  .radar-title { font-size: 11px; color: var(--sub); font-weight: 600; letter-spacing: 0.8px; margin-bottom: 8px; }
-  .radar-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-  .radar-tag { font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(88,166,255,0.1); color: var(--pre); border: 1px solid rgba(88,166,255,0.2); }
-  .radar-tag.warn { background: rgba(248,81,73,0.1); color: var(--sell); border-color: rgba(248,81,73,0.2); }
-  .radar-tag.none { color: var(--sub); background: transparent; border-color: var(--border); }
+  /* Radar tags */
+  .radar-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .rtag {
+    font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 12px;
+    border: 1px solid;
+  }
+  .rtag.bull { background: var(--pre-bg); color: var(--pre); border-color: var(--pre-border); }
+  .rtag.bear { background: var(--sell-bg); color: var(--sell); border-color: var(--sell-border); }
+  .rtag.warn { background: var(--hold-bg); color: var(--hold); border-color: var(--hold-border); }
+  .rtag.none { background: #f7fafc; color: var(--sub); border-color: var(--border); }
 
-  /* Legend / Guide */
-  .guide { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px; }
-  .guide h2 { font-size: 14px; font-weight: 700; margin-bottom: 16px; color: var(--text); display: flex; align-items: center; gap: 8px; }
-  .guide-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-  .guide-item { padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border: 1px solid var(--border); }
-  .guide-item-title { font-size: 12px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
-  .guide-item-desc { font-size: 11px; color: var(--sub); line-height: 1.6; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  /* ── Section title ── */
+  .section-title {
+    font-size: 16px; font-weight: 800; color: var(--accent);
+    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-title span { flex: 1; height: 1px; background: var(--border); display: block; margin-left: 8px; }
+
+  /* ── Guide ── */
+  .guide-card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 18px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
 
   /* Signal legend */
-  .signal-legend { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-bottom: 16px; }
-  .sl-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); }
-  .sl-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .signal-legend { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; }
+  @media (min-width: 480px) { .signal-legend { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 700px) { .signal-legend { grid-template-columns: repeat(6, 1fr); } }
+  .sl-item {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    padding: 12px 8px; border-radius: 12px; border: 1.5px solid var(--border);
+    text-align: center; background: #f7fafc;
+  }
+  .sl-emoji { font-size: 22px; }
+  .sl-label { font-size: 11px; font-weight: 800; }
+  .sl-label.buy { color: var(--buy); }
+  .sl-label.sell { color: var(--sell); }
+  .sl-label.hold { color: var(--hold); }
+  .sl-label.pre { color: var(--pre); }
   .sl-desc { font-size: 11px; color: var(--sub); }
 
+  /* Indicator guide */
+  .ind-guide { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 500px) { .ind-guide { grid-template-columns: 1fr 1fr; } }
+  @media (min-width: 760px) { .ind-guide { grid-template-columns: 1fr 1fr 1fr; } }
+  .ig-item {
+    padding: 14px;
+    background: #f7fafc;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .ig-title { font-size: 14px; font-weight: 800; margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
+  .ig-desc { font-size: 13px; color: var(--sub); line-height: 1.6; }
+  .ig-desc strong { color: var(--text); }
+
+  /* Push note */
+  .push-note {
+    background: #f0fff4;
+    border: 1.5px solid var(--buy-border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #276749;
+    margin-top: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .push-note strong { font-weight: 800; }
+
   /* Footer */
-  .footer { text-align: center; padding: 20px; font-size: 11px; color: var(--sub); border-top: 1px solid var(--border); }
+  footer {
+    text-align: center;
+    padding: 20px 16px;
+    font-size: 12px;
+    color: var(--sub);
+    border-top: 1px solid var(--border);
+    background: var(--card);
+  }
+  footer strong { color: var(--text); }
 
-  /* Empty state */
-  .empty { text-align: center; padding: 40px; color: var(--sub); }
-
-  /* Threshold note */
-  .threshold-note { font-size: 11px; color: var(--sub); text-align: center; margin-top: 8px; }
-  .threshold-note span { color: var(--buy); font-weight: 600; }
+  /* Empty */
+  .empty-state {
+    text-align: center; padding: 48px 20px;
+    font-size: 15px; color: var(--sub);
+    background: var(--card); border-radius: 16px;
+    border: 1.5px dashed var(--border);
+  }
 </style>
 </head>
 <body>
 
+<!-- Header -->
 <div class="header">
-  <div class="header-title">
-    <h1>🏅 GLD-MMS 貴金屬預警</h1>
-    <span class="badge">AI SIGNALS</span>
+  <div class="header-inner">
+    <h1>🏅 GLD-MMS 貴金屬預警系統
+      <small>黃金 · 白銀 · GLD ETF — AI 趨勢信號即時分析</small>
+    </h1>
+    <div class="header-meta">
+      <div class="update-badge">
+        <span class="live-dot"></span>
+        <span id="update-time">載入中...</span>
+      </div>
+      <div class="push-badge">📱 三台設備推播啟用中</div>
+    </div>
   </div>
-  <div class="update-time" id="update-time"><span class="live-dot"></span>載入中...</div>
 </div>
 
 <div class="container">
 
   <!-- Asset Cards -->
+  <div class="section-title">📊 即時信號總覽 <span></span></div>
   <div class="assets-grid" id="assets-grid">
-    <div class="empty">📡 等待資料載入...</div>
+    <div class="empty-state">📡 資料載入中，請稍候...</div>
   </div>
 
-  <!-- Beginner Guide -->
-  <div class="guide">
-    <h2>📖 指標說明 — 新手看這裡</h2>
-
+  <!-- Signal Guide -->
+  <div class="section-title">🗺️ 信號說明 — 一看就懂 <span></span></div>
+  <div class="guide-card">
     <div class="signal-legend">
       <div class="sl-item">
-        <span class="sl-badge" style="background:rgba(63,185,80,0.2);color:#3fb950">STRONG BUY</span>
-        <span class="sl-desc">強力買進 🚀</span>
+        <span class="sl-emoji">🚀</span>
+        <span class="sl-label buy">強力買進</span>
+        <span class="sl-desc">STRONG BUY</span>
       </div>
       <div class="sl-item">
-        <span class="sl-badge" style="background:rgba(63,185,80,0.15);color:#3fb950">BUY</span>
-        <span class="sl-desc">買進信號 📈</span>
+        <span class="sl-emoji">📈</span>
+        <span class="sl-label buy">買進</span>
+        <span class="sl-desc">BUY</span>
       </div>
       <div class="sl-item">
-        <span class="sl-badge" style="background:rgba(88,166,255,0.15);color:#58a6ff">PRE BUY</span>
-        <span class="sl-desc">準備買進 👀</span>
+        <span class="sl-emoji">👀</span>
+        <span class="sl-label pre">準備買進</span>
+        <span class="sl-desc">PRE BUY</span>
       </div>
       <div class="sl-item">
-        <span class="sl-badge" style="background:rgba(210,153,34,0.15);color:#d29922">HOLD</span>
-        <span class="sl-desc">觀望等待 ⏳</span>
+        <span class="sl-emoji">⏳</span>
+        <span class="sl-label hold">觀望等待</span>
+        <span class="sl-desc">HOLD</span>
       </div>
       <div class="sl-item">
-        <span class="sl-badge" style="background:rgba(248,81,73,0.15);color:#f85149">SELL</span>
-        <span class="sl-desc">賣出信號 📉</span>
+        <span class="sl-emoji">📉</span>
+        <span class="sl-label sell">賣出</span>
+        <span class="sl-desc">SELL</span>
       </div>
       <div class="sl-item">
-        <span class="sl-badge" style="background:rgba(248,81,73,0.2);color:#f85149">STRONG SELL</span>
-        <span class="sl-desc">強力賣出 🔴</span>
+        <span class="sl-emoji">🔴</span>
+        <span class="sl-label sell">強力賣出</span>
+        <span class="sl-desc">STRONG SELL</span>
       </div>
     </div>
 
-    <div class="guide-grid">
-      <div class="guide-item">
-        <div class="guide-item-title"><span class="dot" style="background:#58a6ff"></span>信心度 (Confidence)</div>
-        <div class="guide-item-desc">AI 對目前信號的把握程度。<strong style="color:#3fb950">&gt;80%</strong> 才會推播通知，代表信號可信度高。</div>
+    <!-- Indicator Guide -->
+    <div class="ind-guide">
+      <div class="ig-item">
+        <div class="ig-title">🎯 信心度</div>
+        <div class="ig-desc">AI 對信號的把握程度。<strong>超過 80% 才會推播通知</strong>，代表信號可信度高，可以認真看待。</div>
       </div>
-      <div class="guide-item">
-        <div class="guide-item-title"><span class="dot" style="background:#f0b429"></span>VWAP 乖離率</div>
-        <div class="guide-item-desc">現價偏離機構平均成本的幅度。<strong style="color:#3fb950">正值</strong>=價格偏高，<strong style="color:#f85149">負值過深</strong>=可能超跌反彈。</div>
+      <div class="ig-item">
+        <div class="ig-title">📏 VWAP 乖離率</div>
+        <div class="ig-desc">現價偏離機構平均成本的幅度。<strong>正值 = 偏貴</strong>，<strong>負值過深 = 超跌</strong>，通常會回歸均值。</div>
       </div>
-      <div class="guide-item">
-        <div class="guide-item-title"><span class="dot" style="background:#3fb950"></span>OBV 能量</div>
-        <div class="guide-item-desc">成交量方向累積。OBV 上升 = 資金持續流入（看漲）；下降 = 資金撤出（看跌）。</div>
+      <div class="ig-item">
+        <div class="ig-title">⚡ OBV 能量方向</div>
+        <div class="ig-desc">成交量累積方向。<strong>OBV 上升 = 資金持續流入</strong>（看漲）；<strong>下降 = 資金撤出</strong>（看跌）。</div>
       </div>
-      <div class="guide-item">
-        <div class="guide-item-title"><span class="dot" style="background:#d29922"></span>ATR 波動擠壓</div>
-        <div class="guide-item-desc">市場波動降至歷史低點，通常預示即將出現大行情（突破或崩跌）。</div>
+      <div class="ig-item">
+        <div class="ig-title">🔥 ATR 波動擠壓</div>
+        <div class="ig-desc">市場進入沉寂期，波動縮小至歷史低點。<strong>通常是大行情前兆</strong>，即將出現方向性突破。</div>
       </div>
-      <div class="guide-item">
-        <div class="guide-item-title"><span class="dot" style="background:#58a6ff"></span>底背離</div>
-        <div class="guide-item-desc">價格下跌但 OBV 上升 = 聰明錢悄悄進場，底部反轉機率高。</div>
+      <div class="ig-item">
+        <div class="ig-title">↗ 底背離（看漲）</div>
+        <div class="ig-desc"><strong>價格下跌、OBV 上升</strong> = 聰明錢悄悄進場，底部反轉機率高，適合左側布局。</div>
       </div>
-      <div class="guide-item">
-        <div class="guide-item-title"><span class="dot" style="background:#f85149"></span>頂背離</div>
-        <div class="guide-item-desc">價格上漲但 OBV 下降 = 主力悄悄出貨，頂部反轉機率高。</div>
+      <div class="ig-item">
+        <div class="ig-title">↘ 頂背離（看跌）</div>
+        <div class="ig-desc"><strong>價格上漲、OBV 下降</strong> = 主力悄悄出貨，頂部反轉機率高，注意停利或觀望。</div>
       </div>
     </div>
 
-    <div class="threshold-note" style="margin-top:14px">
-      📱 Bark 推播門檻：信心度 <span>&gt; 80%</span> 且為買進/賣出信號時自動推送至三台設備
+    <div class="push-note">
+      📱 <div><strong>Bark 推播規則：</strong>信心度 &gt; 80% 且出現買進或賣出信號時，自動同步推送至三台 iOS 設備。觀望（HOLD）及信心度不足時<strong>不推播</strong>，避免假訊號干擾。</div>
     </div>
   </div>
 
 </div>
 
-<div class="footer">
-  GLD-MMS v4.1 · 資料來源：Yahoo Finance · 每5分鐘更新（週一至週五）<br>
-  本頁僅供參考，不構成投資建議
-</div>
+<footer>
+  <strong>GLD-MMS v4.1</strong> · 資料來源：Yahoo Finance &amp; FRED · 每 5 分鐘自動更新（週一至週五）<br>
+  ⚠️ 本頁面僅供參考，<strong>不構成任何投資建議</strong>，請自行判斷風險。
+</footer>
 
 <script id="data-source">const AUTO_DATA = {};</script>
 <script>
-(function() {
-  const data = typeof AUTO_DATA !== 'undefined' ? AUTO_DATA : {};
+(function () {
+  const data = (typeof AUTO_DATA !== 'undefined') ? AUTO_DATA : {};
   const signals = data.signals || {};
   const assets_raw = data.assets || {};
   const ts = data.timestamp;
 
   // Update time
+  const timeEl = document.getElementById('update-time');
   if (ts) {
     const d = new Date(ts);
-    document.getElementById('update-time').innerHTML =
-      '<span class="live-dot"></span>更新：' + d.toLocaleString('zh-TW', {month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    timeEl.textContent = '最後更新：' + d.toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } else {
+    timeEl.textContent = '等待資料...';
   }
 
-  const ASSET_CONFIG = {
-    'GC=F': { label: '黃金期貨', cls: 'gold', emoji: '🥇', unit: 'USD/oz' },
-    'SI=F': { label: '白銀期貨', cls: 'silver', emoji: '🥈', unit: 'USD/oz' },
-    'GLD':  { label: 'GLD ETF', cls: 'gold', emoji: '📊', unit: 'USD' }
+  const CFG = {
+    'GC=F': { label: '🥇 黃金期貨', cls: 'gold', unit: 'USD / oz' },
+    'SI=F': { label: '🥈 白銀期貨', cls: 'silver', unit: 'USD / oz' },
+    'GLD':  { label: '📊 GLD ETF',  cls: 'gold',   unit: 'USD' }
   };
 
-  const SIGNAL_LABELS = {
-    'STRONG_BUY': { icon: '🚀', text: '強力買進' },
-    'BUY':        { icon: '📈', text: '買進' },
-    'PRE_BUY':    { icon: '👀', text: '準備買進' },
-    'HOLD':       { icon: '⏳', text: '觀望' },
-    'SELL':       { icon: '📉', text: '賣出' },
-    'STRONG_SELL':{ icon: '🔴', text: '強力賣出' }
+  const SIG_LABEL = {
+    STRONG_BUY:  { icon: '🚀', text: '強力買進' },
+    BUY:         { icon: '📈', text: '買進' },
+    PRE_BUY:     { icon: '👀', text: '準備買進' },
+    HOLD:        { icon: '⏳', text: '觀望' },
+    SELL:        { icon: '📉', text: '賣出' },
+    STRONG_SELL: { icon: '🔴', text: '強力賣出' }
   };
 
-  function confClass(c) {
-    if (c >= 80) return 'high';
-    if (c >= 60) return 'mid';
-    return 'low';
-  }
+  function confCls(c) { return c >= 80 ? 'high' : c >= 60 ? 'mid' : 'low'; }
 
   function getLatest(ticker) {
     const rows = assets_raw[ticker];
-    if (!rows || !rows.length) return null;
-    return rows[rows.length - 1];
+    return (rows && rows.length) ? rows[rows.length - 1] : null;
   }
 
   function renderCard(ticker) {
-    const cfg = ASSET_CONFIG[ticker] || { label: ticker, cls: 'gold', emoji: '📊', unit: '' };
+    const cfg = CFG[ticker];
+    if (!cfg) return '';
     const sig = signals[ticker];
     if (!sig) return '';
 
@@ -256,83 +408,80 @@
     const conf = st.confidence || 0;
     const reason = st.reason || '';
     const price = sig.price || 0;
-    const vwap_dev = sig.vwap_dev || 0;
-    const slabel = SIGNAL_LABELS[signal] || { icon: '⏳', text: signal };
+    const vdev = sig.vwap_dev || 0;
+    const sl = SIG_LABEL[signal] || { icon: '⏳', text: signal };
+    const cc = confCls(conf);
+
     const latest = getLatest(ticker);
-    const obvVal = latest ? latest.obv : null;
-    const obvMa = latest ? latest.obv_ma5 : null;
+    const obvOk = latest && latest.obv != null && latest.obv_ma5 != null;
+    let obvHtml = '<span class="ind-val neutral">—</span>';
+    if (obvOk) {
+      obvHtml = latest.obv > latest.obv_ma5
+        ? '<span class="ind-val up">上升 ▲</span>'
+        : '<span class="ind-val down">下降 ▼</span>';
+    }
+    const vdevCls = vdev > 0.5 ? 'up' : vdev < -0.5 ? 'down' : 'neutral';
 
-    const radarTags = [];
-    if (radar.squeeze) radarTags.push({ text: '⚡ 波動擠壓', warn: false });
-    if (radar.divergence) radarTags.push({ text: '↗ 底背離', warn: false });
-    if (radar.bear_divergence) radarTags.push({ text: '↘ 頂背離', warn: true });
-    if (radar.oversold) radarTags.push({ text: '💧 超跌', warn: false });
-    if (radar.overbought) radarTags.push({ text: '🔥 超買', warn: true });
+    // Radar tags
+    let radarHtml = '';
+    const tags = [];
+    if (radar.squeeze)        tags.push({ t: '⚡ 波動擠壓', c: 'warn' });
+    if (radar.divergence)     tags.push({ t: '↗ 底背離',   c: 'bull' });
+    if (radar.bear_divergence)tags.push({ t: '↘ 頂背離',   c: 'bear' });
+    if (radar.oversold)       tags.push({ t: '💧 超跌',    c: 'bull' });
+    if (radar.overbought)     tags.push({ t: '🔥 超買',    c: 'bear' });
+    if (tags.length) {
+      radarHtml = `<div class="radar-tags">${tags.map(t => `<span class="rtag ${t.c}">${t.t}</span>`).join('')}</div>`;
+    } else {
+      radarHtml = `<div class="radar-tags"><span class="rtag none">雷達掃描中...</span></div>`;
+    }
 
-    const obvTrend = (obvVal !== null && obvMa !== null)
-      ? (obvVal > obvMa ? '<span class="ind-value positive">上升 ▲</span>' : '<span class="ind-value negative">下降 ▼</span>')
-      : '<span class="ind-value neutral">-</span>';
-
-    const vwapClass = vwap_dev > 0.5 ? 'positive' : vwap_dev < -0.5 ? 'negative' : 'neutral';
+    const pushNote = conf > 80 && signal !== 'HOLD'
+      ? `<span class="push-active">📱 已推播至三台設備</span>` : '';
 
     return `
-    <div class="asset-card ${cfg.cls}">
-      <div class="asset-header">
-        <div>
-          <div class="asset-name">${cfg.emoji} ${cfg.label}</div>
-          <div class="asset-ticker">${ticker} · ${cfg.unit}</div>
-          <div class="asset-price ${cfg.cls}">$${price.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</div>
-        </div>
-        <div>
-          <div class="signal-badge ${signal}"><span class="signal-icon">${slabel.icon}</span>${slabel.text}</div>
-        </div>
+<div class="asset-card">
+  <div class="card-top">
+    <div class="card-top-left">
+      <div class="asset-label">${cfg.label}</div>
+      <div class="asset-price ${cfg.cls}">$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      <div class="asset-unit">${cfg.unit}</div>
+    </div>
+    <div class="signal-wrap">
+      <div class="signal-badge ${signal}">${sl.icon} ${sl.text}</div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="conf-row">
+      <span class="conf-label">🎯 AI 信心度</span>
+      <span class="conf-num ${cc}">${conf}%${conf > 80 ? ' ✅' : ''}</span>
+    </div>
+    <div class="conf-track"><div class="conf-fill ${cc}" style="width:${conf}%"></div></div>
+    ${pushNote ? `<div style="margin-bottom:8px">${pushNote}</div>` : ''}
+    <div class="reason-box ${signal}">💬 ${reason}</div>
+    <div class="indicators">
+      <div class="ind">
+        <div class="ind-name">VWAP 乖離率</div>
+        <div class="ind-val ${vdevCls}">${vdev > 0 ? '+' : ''}${vdev.toFixed(2)}%</div>
       </div>
-
-      <div class="confidence-section">
-        <div class="confidence-label">
-          <span>AI 信心度</span>
-          <span>${conf}%${conf > 80 ? ' 🔔 推播中' : ''}</span>
-        </div>
-        <div class="conf-track">
-          <div class="conf-fill ${confClass(conf)}" style="width:${conf}%"></div>
-        </div>
+      <div class="ind">
+        <div class="ind-name">OBV 能量</div>
+        <div>${obvHtml}</div>
       </div>
-
-      <div class="reason ${signal}">💬 ${reason}</div>
-
-      <div class="indicators">
-        <div class="ind">
-          <div class="ind-name">VWAP 乖離率</div>
-          <div class="ind-value ${vwapClass}">${vwap_dev > 0 ? '+' : ''}${vwap_dev.toFixed(2)}%</div>
-        </div>
-        <div class="ind">
-          <div class="ind-name">OBV 能量方向</div>
-          <div>${obvTrend}</div>
-        </div>
-      </div>
-
-      ${radarTags.length ? `
-      <div class="radar">
-        <div class="radar-title">🔭 前瞻雷達偵測</div>
-        <div class="radar-tags">
-          ${radarTags.map(t => `<span class="radar-tag ${t.warn ? 'warn' : ''}">${t.text}</span>`).join('')}
-        </div>
-      </div>` : `
-      <div class="radar">
-        <div class="radar-tags"><span class="radar-tag none">雷達掃描中...</span></div>
-      </div>`}
-    </div>`;
+    </div>
+    <div style="font-size:11px;color:#a0aec0;font-weight:700;letter-spacing:0.5px;margin-top:10px;margin-bottom:4px">🔭 前瞻雷達</div>
+    ${radarHtml}
+  </div>
+</div>`;
   }
 
   const tickers = ['GC=F', 'SI=F', 'GLD'];
   const cards = tickers.map(renderCard).filter(Boolean).join('');
   const grid = document.getElementById('assets-grid');
   if (cards) {
-    grid.style.gridTemplateColumns = tickers.filter(t => signals[t]).length === 2
-      ? '1fr 1fr' : 'repeat(auto-fill, minmax(280px, 1fr))';
     grid.innerHTML = cards;
   } else {
-    grid.innerHTML = '<div class="empty">📡 尚無資料，等待下次更新...</div>';
+    grid.innerHTML = '<div class="empty-state">📡 尚無資料，等待下次自動更新（每 5 分鐘）</div>';
   }
 })();
 </script>
