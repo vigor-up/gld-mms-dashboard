@@ -599,7 +599,6 @@
           </div>
         </div>
       </div>`;
-    }
     } else if (lam.score !== undefined) {
       // Lambda score 存在但沒有 model 詳細資料 → 用 performance 顯示
       const sc = lam.score;
@@ -627,6 +626,7 @@
           </div>
         </div>
       </div>`;
+    }
     mcEl.innerHTML = `
       ${horizonsHtml}
       ${topFeats.length ? `
