@@ -20,7 +20,7 @@
     header { text-align: center; margin-bottom: 32px; }
     header h1 { font-size: 2rem; font-weight: 700; color: #ffd700; letter-spacing: 2px; text-shadow: 0 0 20px rgba(255,215,0,0.4); }
     header p { font-size: 0.9rem; color: #888; margin-top: 6px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; width: 100%; max-width: 1100px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; width: 100%; max-width: 1200px; }
     .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,215,0,0.15); border-radius: 16px; padding: 24px; backdrop-filter: blur(10px); transition: transform 0.2s, box-shadow 0.2s; }
     .card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(255,215,0,0.1); }
     .card h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; color: #888; margin-bottom: 14px; }
@@ -35,18 +35,31 @@
     .stat-unit { font-size: 0.9rem; color: #888; }
     .prob-up { color: #51cf66; font-weight: 700; }
     .prob-dn { color: #ff6b6b; font-weight: 700; }
-    .horizon-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-    .horizon-table th { font-size: 0.78rem; color: #888; text-align: left; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-    .horizon-table td { font-size: 0.95rem; padding: 6px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-    .feature-row { margin: 6px 0; }
-    .feature-name { font-size: 0.9rem; color: #ccc; margin-bottom: 3px; }
+    /* 說明提示 */
+    .desc { font-size: 0.78rem; color: #666; margin-top: 4px; line-height: 1.4; }
+    .desc-inline { font-size: 0.78rem; color: #666; margin-left: 6px; }
+    /* 參數表 */
+    .param-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .param-table th { font-size: 0.78rem; color: #888; text-align: left; padding: 5px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .param-table td { font-size: 0.9rem; padding: 7px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: top; }
+    .param-table td.label { color: #ccc; white-space: nowrap; }
+    .param-table td.val { font-weight: 700; }
+    .param-table td.explain { font-size: 0.78rem; color: #666; }
+    /* 特徵重要性 */
+    .feature-row { margin: 8px 0; }
+    .feature-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
+    .feature-name { font-size: 0.9rem; color: #ffd700; font-weight: 600; }
+    .feature-name-zh { font-size: 0.8rem; color: #aaa; margin-left: 6px; }
+    .feature-pct { font-size: 0.82rem; color: #888; }
     .feature-bar-bg { background: rgba(255,255,255,0.08); border-radius: 999px; height: 8px; overflow: hidden; }
     .feature-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ffd700, #ff9f43); }
-    .feature-pct { font-size: 0.8rem; color: #888; margin-top: 2px; }
-    .perf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
-    .perf-item { text-align: center; }
-    .perf-num { font-size: 1.5rem; font-weight: 700; }
+    .feature-desc { font-size: 0.75rem; color: #555; margin-top: 3px; }
+    /* 績效 */
+    .perf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+    .perf-item { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 12px; text-align: center; }
+    .perf-num { font-size: 1.6rem; font-weight: 700; }
     .perf-label { font-size: 0.78rem; color: #888; margin-top: 2px; }
+    .perf-desc { font-size: 0.72rem; color: #555; margin-top: 4px; line-height: 1.3; }
     .status-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; background: rgba(81,207,102,0.15); color: #51cf66; border: 1px solid rgba(81,207,102,0.3); margin-top: 10px; }
     .timestamp { font-size: 0.82rem; color: #666; margin-top: 10px; }
     .loading { text-align: center; padding: 60px 0; color: #888; }
@@ -54,30 +67,48 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .error-card { text-align: center; color: #ff6b6b; padding: 40px; }
     footer { margin-top: 40px; font-size: 0.8rem; color: #444; text-align: center; }
+    .divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 10px 0; }
   </style>
 </head>
 <body>
 <header>
   <h1>🥇 黃金預測系統</h1>
-  <p>GLD-MMS · XGBoost 模型 · 資料來源 Yahoo Finance</p>
+  <p>GLD-MMS · XGBoost 模型 · 資料來源 Yahoo Finance · 每 5 分鐘自動更新</p>
 </header>
 <div id="app">
   <div class="loading"><div class="spinner"></div><p>載入預測資料中...</p></div>
 </div>
-<footer><p>本系統僅供參考，不構成投資建議。資料每日自動更新。</p></footer>
+<footer><p>本系統僅供參考，不構成投資建議。</p></footer>
 <script>
   const S3_DATA_URL = 'https://gld-mms-data-richtrong.s3.amazonaws.com/data.json';
+
+  // 特徵名稱對照表（英文→中文說明）
+  const FEATURE_LABELS = {
+    ret_1d:   { zh: '1日報酬率',   desc: '昨日黃金漲跌幅，反映短期動能' },
+    ret_5d:   { zh: '5日報酬率',   desc: '近5日累計漲跌，反映週線趨勢' },
+    ret_10d:  { zh: '10日報酬率',  desc: '近10日累計漲跌，反映中期趨勢' },
+    ret_20d:  { zh: '20日報酬率',  desc: '近20日累計漲跌，反映月線趨勢' },
+    rsi_norm: { zh: 'RSI 相對強弱',desc: '14日RSI正規化值，>0.7超買，<0.3超賣' },
+    obv_div:  { zh: 'OBV 量價背離',desc: '成交量能量指標，正值代表資金流入' },
+    vol_ratio:{ zh: '成交量比率',   desc: '近日成交量與均量之比，反映市場活躍度' },
+    dxy:      { zh: '美元指數',    desc: '美元強弱，與黃金通常呈負相關' },
+    vix:      { zh: 'VIX 恐慌指數',desc: '市場恐慌程度，上升時黃金避險需求增加' },
+    macd:     { zh: 'MACD 指標',   desc: '短長均線差值，正值偏多，負值偏空' },
+    bb_pos:   { zh: '布林帶位置',  desc: '價格在布林帶中的相對位置，>0.8接近上軌' },
+    atr_norm: { zh: 'ATR 波動率',  desc: '真實波動幅度正規化值，反映市場波動大小' },
+  };
+
   async function loadData() {
     const app = document.getElementById('app');
     try {
       const res = await fetch(S3_DATA_URL + '?t=' + Date.now());
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const d = await res.json();
-      render(d);
+      render(await res.json());
     } catch(e) {
       app.innerHTML = '<div class="card error-card"><p>⚠️ 無法載入資料</p><p style="font-size:0.85rem;margin-top:8px;color:#888">'+e.message+'</p></div>';
     }
   }
+
   function signalEmoji(s) {
     if (!s) return '⏳';
     if (s.includes('強力買進')) return '🚀';
@@ -91,7 +122,8 @@
     if (v <= 35) return '#ff6b6b';
     return '#aaa';
   }
-  function fp(v) { return v != null ? v.toFixed(1)+'%' : '--'; }
+  function fp(v, unit='%') { return v != null ? v.toFixed(1)+unit : '--'; }
+
   function render(d) {
     const app = document.getElementById('app');
     const score = d.score ?? 0;
@@ -104,60 +136,153 @@
     const pf = d.performance || {};
     const sm = d.smart_money || {};
     const mi = d.model || {};
+
     app.innerHTML = `
       <div class="grid">
+
+        <!-- 主信號 -->
         <div class="card signal-card">
           <span class="signal-emoji">${signalEmoji(signal)}</span>
           <div class="signal-text">${signal}</div>
-          <div style="display:flex;justify-content:center;gap:40px;margin-top:16px;">
-            <div style="text-align:center"><div style="font-size:0.85rem;color:#888">上漲機率</div><div class="prob-up" style="font-size:2rem">${fp(d.prob_up)}</div></div>
-            <div style="text-align:center"><div style="font-size:0.85rem;color:#888">下跌機率</div><div class="prob-dn" style="font-size:2rem">${fp(d.prob_dn)}</div></div>
+          <div class="desc" style="font-size:0.88rem;color:#888;margin-top:6px">XGBoost 模型綜合 17 個市場指標後輸出的今日操作建議</div>
+          <div style="display:flex;justify-content:center;gap:48px;margin-top:20px;">
+            <div style="text-align:center">
+              <div style="font-size:0.82rem;color:#888">📈 上漲機率</div>
+              <div class="prob-up" style="font-size:2rem">${fp(d.prob_up)}</div>
+              <div class="desc">模型預測明日收漲的機率</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:0.82rem;color:#888">📉 下跌機率</div>
+              <div class="prob-dn" style="font-size:2rem">${fp(d.prob_dn)}</div>
+              <div class="desc">模型預測明日收跌的機率</div>
+            </div>
           </div>
           <div class="timestamp">更新時間：${ts}</div>
         </div>
+
+        <!-- AI 評分 -->
         <div class="card">
           <h3>📊 AI 信心評分</h3>
           <div class="score-value" style="color:${color}">${score}</div>
           <div class="score-label">滿分 100 分</div>
           <div class="progress-bar"><div class="progress-fill" style="width:${score}%"></div></div>
-          <div style="margin-top:12px"><span class="status-badge">${d.status||'XGBoost'}</span></div>
-        </div>
-        <div class="card">
-          <h3>🥇 黃金現價（USD/oz）</h3>
-          <div class="stat-value">$${d.gold?.price??'--'}<span class="stat-unit"> USD</span></div>
-          <div style="margin-top:16px;font-size:0.95rem">
-            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.07)"><span style="color:#888">ETF 流向</span><span style="color:#ffd700">${sm.etf_flow||'--'}</span></div>
-            <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:#888">ETF 比率</span><span>${sm.etf_ratio??'--'}</span></div>
+          <div class="desc" style="margin-top:10px">
+            綜合多項指標加權計算的信心指數。<br>
+            🟢 70+ 強烈信號 ｜ 🟡 55-69 中等信號 ｜ 🔴 &lt;35 弱勢信號
           </div>
+          <div style="margin-top:10px"><span class="status-badge">${d.status||'XGBoost'}</span></div>
         </div>
+
+        <!-- 黃金現價 -->
+        <div class="card">
+          <h3>🥇 黃金現價</h3>
+          <div class="stat-value">$${d.gold?.price??'--'}<span class="stat-unit"> USD/oz</span></div>
+          <div class="desc" style="margin-top:6px">黃金期貨收盤價（GC=F，紐約商品交易所）</div>
+          <hr class="divider" style="margin-top:16px">
+          <div style="font-size:0.82rem;color:#888;margin-bottom:8px;margin-top:8px">💼 Smart Money 機構動向</div>
+          <table class="param-table">
+            <tr>
+              <td class="label">ETF 資金流向</td>
+              <td class="val" style="color:#ffd700">${sm.etf_flow||'--'}</td>
+              <td class="explain">大型黃金ETF（GLD/IAU）近期資金淨流入或流出</td>
+            </tr>
+            <tr>
+              <td class="label">ETF 買賣比率</td>
+              <td class="val">${sm.etf_ratio??'--'}</td>
+              <td class="explain">買入量/賣出量比值，>1代表買盤更強</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- 多時框預測 -->
         <div class="card">
           <h3>⏱ 多時框預測</h3>
-          <table class="horizon-table">
-            <tr><th>時框</th><th>上漲機率</th><th>CV 勝率</th></tr>
-            <tr><td>1 日</td><td class="${(h1.prob_up??0)>=50?'prob-up':'prob-dn'}">${fp(h1.prob_up)}</td><td>${fp(h1.cv_win_rate)}</td></tr>
-            <tr><td>5 日</td><td class="${(h5.prob_up??0)>=50?'prob-up':'prob-dn'}">${fp(h5.prob_up)}</td><td>${fp(h5.cv_win_rate)}</td></tr>
-            <tr><td>30 日</td><td>${h30.prob_up!=null?fp(h30.prob_up):'待接入'}</td><td>${h30.cv_win_rate!=null?fp(h30.cv_win_rate):'--'}</td></tr>
+          <div class="desc" style="margin-bottom:12px">同一模型在不同持有週期下的預測結果，CV勝率為交叉驗證實測勝率（非回測）</div>
+          <table class="param-table">
+            <tr>
+              <th>持有時框</th>
+              <th>上漲機率</th>
+              <th>CV 勝率</th>
+            </tr>
+            <tr>
+              <td class="label">1 日（隔日）</td>
+              <td class="val ${(h1.prob_up??0)>=50?'prob-up':'prob-dn'}">${fp(h1.prob_up)}</td>
+              <td>${fp(h1.cv_win_rate)}</td>
+            </tr>
+            <tr>
+              <td class="label">5 日（一週）</td>
+              <td class="val ${(h5.prob_up??0)>=50?'prob-up':'prob-dn'}">${fp(h5.prob_up)}</td>
+              <td>${fp(h5.cv_win_rate)}</td>
+            </tr>
+            <tr>
+              <td class="label">30 日（一月）</td>
+              <td class="val">${h30.prob_up!=null?fp(h30.prob_up):'接入中'}</td>
+              <td>${h30.cv_win_rate!=null?fp(h30.cv_win_rate):'--'}</td>
+            </tr>
           </table>
-          <div style="margin-top:12px;font-size:0.82rem;color:#666">
-            ${mi.type||'XGBoost'} · 特徵：${mi.features??'--'} · 樣本：${mi.train_samples??'--'}
+          <div class="desc" style="margin-top:10px">
+            ＊CV 勝率（交叉驗證勝率）= 將歷史數據分組反覆驗證後的實際預測準確率，比單純回測更可靠
+          </div>
+          <hr class="divider">
+          <div style="font-size:0.78rem;color:#555">
+            模型：${mi.type||'XGBoost Classifier'} ｜ 特徵數：${mi.features??'--'} ｜ 訓練樣本：${mi.train_samples??'--'} 筆
           </div>
         </div>
+
+        <!-- 特徵重要性 -->
         <div class="card">
-          <h3>🔍 Top 5 特徵重要性</h3>
-          ${tf.map(f=>`<div class="feature-row"><div class="feature-name">${f.name}</div><div class="feature-bar-bg"><div class="feature-bar-fill" style="width:${f.importance}%"></div></div><div class="feature-pct">${f.importance.toFixed(1)}%</div></div>`).join('')||'<p style="color:#888;font-size:0.9rem">無資料</p>'}
+          <h3>🔍 關鍵影響因子 Top 5</h3>
+          <div class="desc" style="margin-bottom:12px">模型判斷時最重視的指標（重要性越高，對預測結果影響越大）</div>
+          ${tf.map(f => {
+            const info = FEATURE_LABELS[f.name] || { zh: f.name, desc: '市場技術指標' };
+            return `<div class="feature-row">
+              <div class="feature-header">
+                <span>
+                  <span class="feature-name">${f.name}</span>
+                  <span class="feature-name-zh">（${info.zh}）</span>
+                </span>
+                <span class="feature-pct">${f.importance.toFixed(1)}%</span>
+              </div>
+              <div class="feature-bar-bg"><div class="feature-bar-fill" style="width:${Math.min(f.importance*2,100)}%"></div></div>
+              <div class="feature-desc">${info.desc}</div>
+            </div>`;
+          }).join('')||'<p style="color:#888;font-size:0.9rem">無資料</p>'}
         </div>
+
+        <!-- 模型績效 -->
         <div class="card">
-          <h3>📈 模型績效</h3>
+          <h3>📈 模型績效指標</h3>
           <div class="perf-grid">
-            <div class="perf-item"><div class="perf-num" style="color:${(pf.sharpe??0)>=0?'#51cf66':'#ff6b6b'}">${pf.sharpe!=null?pf.sharpe.toFixed(2):'--'}</div><div class="perf-label">Sharpe 比率</div></div>
-            <div class="perf-item"><div class="perf-num" style="color:#ffd700">${pf.win_rate!=null?pf.win_rate.toFixed(1)+'%':'--'}</div><div class="perf-label">歷史勝率</div></div>
-            <div class="perf-item"><div class="perf-num" style="color:#ff6b6b">${pf.max_dd!=null?pf.max_dd.toFixed(1)+'%':'--'}</div><div class="perf-label">最大回撤</div></div>
-            <div class="perf-item"><div class="perf-num" style="color:#51cf66">${pf.cv_win_rate_5d!=null?pf.cv_win_rate_5d.toFixed(1)+'%':'--'}</div><div class="perf-label">5日 CV 勝率</div></div>
+            <div class="perf-item">
+              <div class="perf-num" style="color:${(pf.sharpe??0)>=0?'#51cf66':'#ff6b6b'}">${pf.sharpe!=null?pf.sharpe.toFixed(2):'--'}</div>
+              <div class="perf-label">Sharpe 比率</div>
+              <div class="perf-desc">報酬/風險比值。&gt;1 優秀，&gt;0 可接受，&lt;0 虧損</div>
+            </div>
+            <div class="perf-item">
+              <div class="perf-num" style="color:#ffd700">${pf.win_rate!=null?pf.win_rate.toFixed(1)+'%':'--'}</div>
+              <div class="perf-label">歷史勝率</div>
+              <div class="perf-desc">過去訓練期間預測正確的比率</div>
+            </div>
+            <div class="perf-item">
+              <div class="perf-num" style="color:#ff6b6b">${pf.max_dd!=null?pf.max_dd.toFixed(1)+'%':'--'}</div>
+              <div class="perf-label">最大回撤</div>
+              <div class="perf-desc">歷史上最嚴重的虧損幅度（越小越好）</div>
+            </div>
+            <div class="perf-item">
+              <div class="perf-num" style="color:#51cf66">${pf.cv_win_rate_5d!=null?pf.cv_win_rate_5d.toFixed(1)+'%':'--'}</div>
+              <div class="perf-label">5日 CV 勝率</div>
+              <div class="perf-desc">5日持有週期的交叉驗證實測準確率</div>
+            </div>
           </div>
-          <div style="margin-top:10px;font-size:0.82rem;color:#666">1日 CV 勝率：${pf.cv_win_rate_1d!=null?pf.cv_win_rate_1d.toFixed(1)+'%':'--'}</div>
+          <div style="margin-top:12px;font-size:0.82rem;color:#666">
+            1日 CV 勝率：${pf.cv_win_rate_1d!=null?pf.cv_win_rate_1d.toFixed(1)+'%':'--'}
+            <span class="desc-inline">（隔日預測交叉驗證準確率）</span>
+          </div>
         </div>
+
       </div>`;
   }
+
   loadData();
   setInterval(loadData, 5*60*1000);
 </script>
