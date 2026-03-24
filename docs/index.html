@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <style>
+    /* 防止文字選取 */
+    body {
+        -webkit-user-select: none;  /* Safari */
+        -moz-user-select: none;     /* Firefox */
+        -ms-user-select: none;      /* IE/Edge */
+        user-select: none;           /* 標準語法 */
+    }
+
+    /* 針對圖片：禁止拖曳、禁止長按菜單，但保留點擊事件（由父層處理） */
+    img {
+        -webkit-touch-callout: none; /* iOS 長按選單 */
+        -webkit-user-drag: none;     /* Chrome 拖曳 */
+        user-drag: none;
+        pointer-events: none;         /* 讓圖片本身無法被點擊，但父容器可接收點擊 */
+    }
+
+    /* 圖片的容器需設定 cursor: pointer 提示可點擊 */
+    .img-container {
+        cursor: pointer;
+    }
+</style>
+
+<!-- 簡易 Lightbox 結構 -->
+<div id="lightbox" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; justify-content:center; align-items:center; flex-direction:column;" onclick="this.style.display='none'">
+    <img id="lightbox-img" src="" style="max-width:90%; max-height:80%; object-fit:contain; border-radius:8px;">
+    <div id="lightbox-caption" style="color:white; margin-top:16px; font-size:1rem;"></div>
+</div>
+
+<script>
+    // 1. 禁止右鍵選單 (含手機長按)
+    document.addEventListener('contextmenu', e => e.preventDefault());
+
+    // 2. 禁止複製快捷鍵 (Ctrl+C, Ctrl+X)
+    document.addEventListener('copy', e => e.preventDefault());
+    document.addEventListener('cut', e => e.preventDefault());
+
+    // 3. 禁止選取事件 (滑鼠拖曳選取)
+    document.addEventListener('selectstart', e => e.preventDefault());
+
+    // 4. 輕量 Lightbox 功能：所有 .img-container 內的圖片點擊放大
+    function openLightbox(element) {
+        const img = element.querySelector('img');
+        if (!img) return;
+        const caption = element.querySelector('.img-title')?.innerText || '';
+        const lb = document.getElementById('lightbox');
+        const lbImg = document.getElementById('lightbox-img');
+        const lbCaption = document.getElementById('lightbox-caption');
+        lbImg.src = img.src;
+        lbCaption.innerText = caption;
+        lb.style.display = 'flex';
+    }
+
+    // 為所有 .img-container 綁定點擊事件
+    document.querySelectorAll('.img-container').forEach(container => {
+        container.addEventListener('click', function() {
+            openLightbox(this);
+        });
+    });
+</script>
+    <meta charset="UTF-8">
+    <meta name="description" content="活力旺系列產品 - 首池有限公司專業畜牧飼料添加劑，提供種公豬、母豬、仔豬、育肥豬、種雞、蛋雞、土雞、白肉雞、吳郭魚、白蝦等精準營養解決方案，投資報酬率高達2764%。">
+    <meta name="keywords" content="活力旺,飼料添加劑,畜牧營養,豬隻飼料,家禽飼料,水產飼料,精準營養,首池有限公司,FCR改善,投資報酬率">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="首池有限公司">
+    <meta name="revisit-after" content="7 days">
+    <link rel="canonical" href="https://richtrong.com/">
+    <link rel="alternate" hreflang="zh-Hant" href="https://richtrong.com/">
+    <link rel="alternate" hreflang="zh-Hans" href="https://richtrong.com/">
+    <link rel="alternate" hreflang="en" href="https://richtrong.com/">
+    <link rel="alternate" hreflang="x-default" href="https://richtrong.com/">
+    <meta property="og:title" content="活力旺畜牧飼料添加劑｜精準營養解決方案｜首池有限公司">
+    <meta property="og:description" content="活力旺系列產品 - 首池有限公司專業畜牧飼料添加劑，提供種公豬、母豬、仔豬、育肥豬、種雞、蛋雞、土雞、白肉雞、吳郭魚、白蝦等精準營養解決方案，投資報酬率高達2764%。">
+    <meta property="og:image" content="https://richtrong.com/assets/logo.png">
+    <meta property="og:url" content="https://richtrong.com/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="活力旺 - 首池有限公司">
+    <meta property="og:locale" content="zh_TW">
+    <meta property="og:locale:alternate" content="zh_CN">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="活力旺畜牧飼料添加劑｜精準營養解決方案｜首池有限公司">
+    <meta name="twitter:description" content="活力旺系列產品 - 首池有限公司專業畜牧飼料添加劑，提供種公豬、母豬、仔豬、育肥豬、種雞、蛋雞、土雞、白肉雞、吳郭魚、白蝦等精準營養解決方案，投資報酬率高達2764%。">
+    <meta name="twitter:image" content="https://richtrong.com/assets/logo.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>活力旺畜牧飼料添加劑｜精準營養解決方案｜首池有限公司</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        /* === 行動裝置優先變數定義 (完全保留原始設計) === */
+        :root {
+            --primary-green: #1a5d1a;
+            --secondary-green: #0f3d0f;
+            --accent-gold: #d4af37;
+            --accent-light: #f0e6d2;
+            --primary-dark: #1a1a1a;
+            --secondary-dark: #2d2d2d;
+            --light-bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --border-radius: 16px;
+            --card-radius: 20px;
+            --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            --card-shadow-hover: 0 12px 40px rgba(26, 93, 26, 0.15);
+            --header-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+            --font-heading: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+            --font-body: 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-text-size-adjust: 100%;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--light-bg);
+            color: var(--primary-dark);
+            line-height: 1.7;
+            overflow-x: hidden;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            padding-top: var(--safe-top);
+            padding-bottom: var(--safe-bottom);
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(212, 175, 55, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(26, 93, 26, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1280px;
+            padding: 0 clamp(20px, 5vw, 40px);
+            margin: 0 auto;
+        }
+
+        .language-switcher {
+            position: fixed;
+            top: calc(20px + var(--safe-top));
+            right: clamp(20px, 5vw, 40px);
+            z-index: 1000;
+            display: flex;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 12px;
+            border-radius: 30px;
+            box-shadow: var(--header-shadow);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(26, 93, 26, 0.1);
+            transition: var(--transition);
+        }
+
+        .lang-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            padding: 10px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: var(--transition);
+            color: var(--secondary-dark);
+            white-space: nowrap;
+            letter-spacing: 0.3px;
+        }
+
+        .lang-btn.active {
+            background: var(--primary-green);
+            color: white;
+            border-color: var(--primary-green);
+            box-shadow: 0 4px 12px rgba(26, 93, 26, 0.2);
+        }
+
+        header {
+            background: linear-gradient(135deg, 
+                rgba(26, 93, 26, 0.95) 0%, 
+                rgba(15, 61, 15, 0.95) 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+            padding: clamp(60px, 15vw, 120px) 0 clamp(80px, 15vw, 120px);
+            padding-top: calc(clamp(60px, 15vw, 120px) + var(--safe-top));
+            margin-bottom: 40px;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 20%),
+                radial-gradient(circle at 90% 80%, rgba(212, 175, 55, 0.05) 0%, transparent 20%);
+            pointer-events: none;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: clamp(24px, 4vw, 36px);
+        }
+
+        .logo-icon {
+            width: clamp(120px, 25vw, 180px);
+            height: clamp(120px, 25vw, 180px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.2));
+            transition: var(--transition);
+            margin-bottom: 10px;
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            font-weight: 800;
+            margin-bottom: clamp(16px, 3vw, 24px);
+            line-height: 1.2;
+            letter-spacing: -0.5px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(135deg, #ffffff, var(--accent-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .company-name {
+            font-size: clamp(1.25rem, 3.5vw, 1.75rem);
+            font-weight: 600;
+            margin-bottom: clamp(12px, 2.5vw, 20px);
+            color: rgba(255, 255, 255, 0.9);
+            letter-spacing: 1px;
+        }
+
+        .tagline {
+            font-size: clamp(1.1rem, 2.8vw, 1.4rem);
+            opacity: 0.9;
+            max-width: 800px;
+            margin: 0 auto clamp(32px, 6vw, 48px);
+            line-height: 1.6;
+            padding: 0 clamp(20px, 5vw, 40px);
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: clamp(16px, 3vw, 24px);
+            margin-top: clamp(40px, 8vw, 60px);
+            padding: 0 clamp(16px, 4vw, 32px);
+        }
+
+        @media (min-width: 640px) {
+            .stats-container {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: clamp(20px, 4vw, 28px);
+            border-radius: var(--border-radius);
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-gold), transparent);
+        }
+
+        .stat-value {
+            font-size: clamp(1.8rem, 4.5vw, 2.5rem);
+            font-weight: 700;
+            color: var(--accent-gold);
+            display: block;
+            margin-bottom: 8px;
+            line-height: 1.1;
+            font-feature-settings: "tnum";
+        }
+
+        .stat-label {
+            font-size: clamp(0.85rem, 2.2vw, 0.95rem);
+            opacity: 0.9;
+            line-height: 1.4;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        main {
+            padding: clamp(40px, 8vw, 80px) 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: clamp(48px, 10vw, 80px);
+            padding: 0 clamp(20px, 5vw, 40px);
+        }
+
+        .section-title h2 {
+            font-size: clamp(1.8rem, 4.5vw, 2.8rem);
+            color: var(--primary-dark);
+            margin-bottom: clamp(16px, 3vw, 24px);
+            position: relative;
+            display: inline-block;
+            line-height: 1.2;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .section-title h2::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: clamp(80px, 20vw, 120px);
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-green), var(--accent-gold));
+            border-radius: 2px;
+        }
+
+        .section-title p {
+            font-size: clamp(1.1rem, 2.5vw, 1.25rem);
+            color: var(--secondary-dark);
+            max-width: 800px;
+            margin: 32px auto 0;
+            line-height: 1.7;
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: clamp(24px, 6vw, 40px);
+            margin-bottom: clamp(60px, 12vw, 100px);
+            padding: 0 clamp(16px, 4vw, 32px);
+        }
+
+        @media (min-width: 640px) {
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .product-card {
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+            transition: var(--transition);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            border: 1px solid rgba(26, 93, 26, 0.1);
+            cursor: pointer;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        .product-card:hover {
+            transform: translateY(-12px);
+            box-shadow: var(--card-shadow-hover);
+            border-color: rgba(26, 93, 26, 0.2);
+        }
+
+        .product-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-green), var(--accent-gold));
+            z-index: 2;
+        }
+
+        .product-image {
+            height: clamp(180px, 35vw, 220px);
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
+        }
+
+        .product-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.8s ease;
+        }
+
+        .product-card:hover .product-image img {
+            transform: scale(1.05);
+        }
+
+        .product-category {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(26, 93, 26, 0.95);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 1;
+            letter-spacing: 0.5px;
+        }
+
+        .product-content {
+            padding: clamp(24px, 5vw, 32px);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-header {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: clamp(16px, 3vw, 24px);
+        }
+
+        .product-icon {
+            width: clamp(56px, 12vw, 64px);
+            height: clamp(56px, 12vw, 64px);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: clamp(16px, 3vw, 24px);
+            flex-shrink: 0;
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+            color: white;
+            font-size: 1.4rem;
+        }
+
+        .product-header h3 {
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
+            color: var(--primary-dark);
+            margin-bottom: 8px;
+            line-height: 1.3;
+            font-weight: 700;
+        }
+
+        .product-subtitle {
+            font-size: clamp(0.9rem, 2.2vw, 1rem);
+            color: var(--secondary-dark);
+            margin-bottom: clamp(16px, 3vw, 24px);
+            line-height: 1.5;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .product-benefits {
+            list-style-type: none;
+            margin-bottom: clamp(20px, 4vw, 28px);
+            flex-grow: 1;
+        }
+
+        .product-benefits li {
+            padding: clamp(10px, 2vw, 12px) 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: flex-start;
+            transition: var(--transition);
+        }
+
+        .product-benefits li:hover {
+            background: rgba(26, 93, 26, 0.02);
+            padding-left: 8px;
+        }
+
+        .product-benefits li:last-child {
+            border-bottom: none;
+        }
+
+        .product-benefits i {
+            color: var(--primary-green);
+            margin-right: 12px;
+            margin-top: 2px;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .product-benefits span {
+            flex: 1;
+            font-size: clamp(0.95rem, 2.3vw, 1.05rem);
+            line-height: 1.5;
+            color: var(--secondary-dark);
+        }
+
+        .product-footer {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(16px, 3vw, 24px);
+            margin-top: auto;
+            padding-top: clamp(20px, 4vw, 28px);
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        @media (min-width: 480px) {
+            .product-footer {
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+            }
+        }
+
+        .product-roi {
+            text-align: center;
+        }
+
+        @media (min-width: 480px) {
+            .product-roi {
+                text-align: left;
+            }
+        }
+
+        .roi-value {
+            font-size: clamp(1.4rem, 3vw, 1.8rem);
+            font-weight: 700;
+            color: var(--primary-green);
+            display: block;
+            line-height: 1.2;
+            font-feature-settings: "tnum";
+        }
+
+        .roi-label {
+            font-size: clamp(0.85rem, 2.2vw, 0.9rem);
+            color: var(--secondary-dark);
+            opacity: 0.7;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-view {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+            color: white;
+            padding: clamp(14px, 3vw, 18px) clamp(28px, 5vw, 36px);
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: var(--transition);
+            box-shadow: 0 6px 20px rgba(26, 93, 26, 0.2);
+            border: 2px solid transparent;
+            cursor: pointer;
+            font-size: clamp(0.95rem, 2.3vw, 1.05rem);
+            min-height: 52px;
+            min-width: 160px;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-view::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: 0.5s;
+        }
+
+        .btn-view:hover::before {
+            left: 100%;
+        }
+
+        footer {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, #1a1a1a 100%);
+            color: rgba(255, 255, 255, 0.85);
+            padding: clamp(60px, 12vw, 100px) 0 clamp(40px, 8vw, 60px);
+            position: relative;
+            padding-bottom: calc(clamp(40px, 8vw, 60px) + var(--safe-bottom));
+            margin-top: 60px;
+        }
+
+        footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-green), var(--accent-gold));
+        }
+
+        footer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(26, 93, 26, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: clamp(40px, 8vw, 60px);
+            margin-bottom: clamp(40px, 8vw, 60px);
+            position: relative;
+            z-index: 1;
+        }
+
+        @media (min-width: 640px) {
+            .footer-content {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .footer-content {
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            }
+        }
+
+        .footer-section {
+            width: 100%;
+        }
+
+        .footer-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        @media (min-width: 640px) {
+            .footer-logo {
+                align-items: flex-start;
+                text-align: left;
+            }
+        }
+
+        .footer-logo-img {
+            width: clamp(120px, 25vw, 160px);
+            height: clamp(120px, 25vw, 160px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: clamp(16px, 3vw, 24px);
+            overflow: visible;
+            filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.3));
+        }
+
+        .footer-logo-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .footer-section h3 {
+            font-size: clamp(1.2rem, 3vw, 1.4rem);
+            margin-bottom: clamp(20px, 4vw, 28px);
+            color: white;
+            line-height: 1.2;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            position: relative;
+            padding-bottom: 12px;
+        }
+
+        .footer-section h3::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-gold), transparent);
+        }
+
+        .footer-links {
+            list-style-type: none;
+        }
+
+        .footer-links li {
+            margin-bottom: clamp(12px, 2.5vw, 16px);
+            transition: var(--transition);
+        }
+
+        .footer-links li:hover {
+            transform: translateX(5px);
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            min-height: 40px;
+            font-size: clamp(0.95rem, 2.3vw, 1.05rem);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .footer-links a::before {
+            content: '';
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 0;
+            background: var(--accent-gold);
+            transition: var(--transition);
+            border-radius: 2px;
+        }
+
+        .footer-links a:hover::before {
+            height: 70%;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-gold);
+            padding-left: 10px;
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: clamp(32px, 6vw, 48px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: clamp(0.85rem, 2.2vw, 0.95rem);
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.8s ease forwards;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .floating {
+            animation: float 3s ease-in-out infinite;
+        }
+
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.05); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, var(--primary-green), var(--accent-gold)); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+        @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; } }
+        @media print { .language-switcher, .btn-view { display: none !important; } }
+    </style>
+</head>
+<body>
+    <!-- 語言切換器 -->
+    <div class="language-switcher" role="region" aria-label="語言選擇">
+        <button class="lang-btn active" data-lang="zh-TW" data-rate="1.000" data-currency="NTD" aria-label="繁體中文">繁體中文(NTD)</button>
+        <button class="lang-btn" data-lang="zh-CN" data-rate="0.2192" data-currency="CNY" aria-label="简体中文">简体中文(CNY)</button>
+        <button class="lang-btn" data-lang="en" data-rate="0.0320" data-currency="USD" aria-label="English">English(USD)</button>
+    </div>
+
+    <!-- 頁頭區域 -->
+    <header role="banner">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo-container">
+                    <div class="logo-icon floating">
+                        <img src="assets/logo.png" alt="活力旺logo" data-translate-key="logo_alt" loading="eager">
+                    </div>
+                </div>
+                <h1 data-translate-key="page_title">活力旺系列產品解決方案</h1>
+                <div class="company-name" data-translate-key="company_name">首池有限公司</div>
+                <p class="tagline" data-translate-key="tagline">精準營養 · 先進生物技術 · 永續農業</p>
+                
+                <div class="stats-container">
+                    <div class="stat-item fade-in" style="animation-delay: 0.1s;">
+                        <span class="stat-value" data-value="2764">2,764%</span>
+                        <span class="stat-label" data-translate-key="highest_roi">最高投資報酬率</span>
+                    </div>
+                    <div class="stat-item fade-in" style="animation-delay: 0.2s;">
+                        <span class="stat-value" data-value="12">12</span>
+                        <span class="stat-label" data-translate-key="solutions_count">專業解決方案</span>
+                    </div>
+                    <div class="stat-item fade-in" style="animation-delay: 0.3s;">
+                        <span class="stat-value">&lt;3天</span>
+                        <span class="stat-label" data-translate-key="fastest_payback">最快投資回收期</span>
+                    </div>
+                    <div class="stat-item fade-in" style="animation-delay: 0.4s;">
+                        <span class="stat-value" data-value="600" data-unit="per_ton">NTD 600/噸</span>
+                        <span class="stat-label" data-translate-key="avg_cost">平均添加成本</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主內容區域 -->
+    <main class="container" role="main">
+        <section class="section-title" aria-labelledby="products-title">
+            <h2 id="products-title" data-translate-key="products_title">活力旺系列產品方案</h2>
+            <p data-translate-key="products_description">基於專利發酵平台與國際前沿代謝科學，針對不同畜禽品種的特定需求，提供精準營養解決方案</p>
+        </section>
+        
+        <section class="products-grid" role="list" aria-label="產品方案列表">
+            <!-- 1. 種公豬方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="種公豬精液品質提升方案" style="animation-delay: 0.1s;">
+                <div class="product-image">
+                    <img src="assets/boar-semen-quality-improvement.jpg" alt="種公豬精液品質提升" data-translate-key="boar_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="swine_nutrition">豬隻營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #e63946, #f28b8b);" aria-hidden="true">
+                            <i class="fas fa-piggy-bank"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="boar_solution">種公豬精液品質提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="boar_breeds">約克夏/藍瑞斯/杜洛克等品種</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_boar1">精子畸形率降低7-10%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_boar2">精液量提升15-20%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_boar3">精子活力提升至85%以上</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="profit_boar">每頭年增淨利</span> <span class="profit-currency" data-value="31848">NTD 31,848</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">2,764%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺種公豬精液品質提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 2. 懷孕母豬方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="懷孕期母豬生產性能優化方案" style="animation-delay: 0.2s;">
+                <div class="product-image">
+                    <img src="assets/pregnant-sow-production-optimization.jpg" alt="懷孕母豬生產性能優化" data-translate-key="pregnant_sow_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="swine_nutrition">豬隻營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #8e24aa, #ce93d8);" aria-hidden="true">
+                            <i class="fas fa-female"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="pregnant_sow_solution">懷孕期母豬生產性能優化方案</h3>
+                            <div class="product-subtitle" data-translate-key="pregnant_sow_subtitle">提升產仔數與仔豬初生重</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_sow1">平均窩產仔數提升0.8-1.2頭</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_sow2">仔豬初生重增加100-150克</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_sow3">減少流產與死胎發生率</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_sow4">優化母豬體況與健康度</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">1,850%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺懷孕期母豬生產性能優化方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 3. 哺乳母豬方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="哺乳母豬性能提升方案" style="animation-delay: 0.3s;">
+                <div class="product-image">
+                    <img src="assets/nursing-sow-performance-improvement.jpg" alt="哺乳母豬性能提升" data-translate-key="nursing_sow_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="swine_nutrition">豬隻營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #0288d1, #81d4fa);" aria-hidden="true">
+                            <i class="fas fa-baby"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="nursing_sow_solution">哺乳母豬性能提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="nursing_sow_subtitle">提升泌乳量與仔豬斷奶重</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_nursing_sow1">泌乳量提升15-20%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_nursing_sow2">仔豬21日齡斷奶重增加0.5-0.8kg</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_nursing_sow3">減少哺乳期體重損失</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_nursing_sow4">縮短斷奶至發情間隔</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">2,150%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺哺乳母豬性能提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 4. 仔豬人工乳方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="仔豬人工乳性能提升方案" style="animation-delay: 0.4s;">
+                <div class="product-image">
+                    <img src="assets/piglet-milk-replacer-improvement.jpg" alt="仔豬人工乳性能提升" data-translate-key="piglet_milk_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="swine_nutrition">豬隻營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #f59e0b, #fcd34d);" aria-hidden="true">
+                            <i class="fas fa-wine-bottle"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="piglet_milk_solution">仔豬人工乳性能提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="piglet_milk_subtitle">保育期仔豬專用配方</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_piglet1">日增重提升50-70克/天</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_piglet2">腹瀉率降低60-70%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_piglet3">飼料轉化率優化</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="profit_piglet">每頭仔豬淨利增加</span> <span class="profit-currency" data-value="197.94">NTD 197.94</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">2,104%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺仔豬人工乳性能提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 5. 育肥豬FCR性能提升方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="育肥豬FCR性能提升方案" style="animation-delay: 0.5s;">
+                <div class="product-image">
+                    <img src="assets/finisher-pig-fcr-improvement.jpg" alt="育肥豬FCR性能提升" data-translate-key="finisher_pig_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="swine_nutrition">豬隻營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #9c27b0, #e1bee7);" aria-hidden="true">
+                            <i class="fas fa-weight-hanging"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="finisher_pig_solution">育肥豬FCR性能提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="finisher_pig_subtitle">140kg高效益規格 · 屠宰溢價領導品牌</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_finisher1">FCR 2.8→<2.0，省88kg飼料</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_finisher2">出肉率>80%，屠體增重7kg</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_finisher3">背脂<2.0cm，溢價420元/頭</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_finisher4">出欄>140kg，雪花溢價100元/頭</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="profit_finisher_label">每頭淨利增加</span> <span class="profit-currency" data-value="2328.8">NTD 2,328.8</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">1,102%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺育肥豬FCR性能提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 6. 種雞方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="種雞性能提升方案" style="animation-delay: 0.6s;">
+                <div class="product-image">
+                    <img src="assets/breeding-chicken-performance-improvement.jpg" alt="種雞性能提升" data-translate-key="breeding_chicken_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="poultry_nutrition">家禽營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #165DFF, #85a5ff);" aria-hidden="true">
+                            <i class="fas fa-crow"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="breeding_chicken_solution">種雞性能提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="breeding_chicken_subtitle">種公雞×種母雞雙效優化</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_breeding_chicken1">受精率提升至92-95%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_breeding_chicken2">孵化率提升4-5%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_breeding_chicken3">健雛率提升至94-97%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="profit_breeding_chicken">千隻場年增淨利</span> <span class="profit-currency" data-value="235915">NTD 235,915</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">919%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺種雞性能提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 7. 蛋雞方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="蛋雞性能提升方案" style="animation-delay: 0.7s;">
+                <div class="product-image">
+                    <img src="assets/layer-chicken-performance-improvement.jpg" alt="蛋雞性能提升" data-translate-key="layer_chicken_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="poultry_nutrition">家禽營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #e67e22, #f5b971);" aria-hidden="true">
+                            <i class="fas fa-egg"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="layer_chicken_solution">蛋雞性能提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="layer_chicken_subtitle">海蘭、羅曼等蛋雞品種專用</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_layer_chicken1">產蛋率提升5-8%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_layer_chicken2">蛋黃品質提升3-4級</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_layer_chicken3">暗斑蛋減少70-80%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="profit_layer_chicken">每隻蛋雞淨利增加</span> <span class="profit-currency" data-value="91.98">NTD 91.98</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">576%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺蛋雞性能提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 8. 土雞方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="土雞性能提升方案" style="animation-delay: 0.8s;">
+                <div class="product-image">
+                    <img src="assets/native-chicken.png" alt="土雞性能提升" data-translate-key="native_chicken_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="poultry_nutrition">家禽營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #2a9d8f, #7fd1c7);" aria-hidden="true">
+                            <i class="fas fa-drumstick-bite"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="native_chicken_solution">土雞性能提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="native_chicken_subtitle">紅羽/黑羽土雞專用</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_native_chicken1">增重效率提升5-8%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_native_chicken2">料肉比優化3-5%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_native_chicken3">成活率提升2-3%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="profit_native_chicken">每隻土雞淨利增加</span> <span class="profit-currency" data-value="22.96">NTD 22.96</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">310%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺土雞性能提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 9. 白肉雞方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="白肉雞FCR性能提升方案" style="animation-delay: 0.9s;">
+                <div class="product-image">
+                    <img src="assets/broiler-chicken-fcr-improvement.jpg" alt="白肉雞FCR性能提升" data-translate-key="broiler_chicken_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="poultry_nutrition">家禽營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #2563eb, #93c5fd);" aria-hidden="true">
+                            <i class="fas fa-utensils"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="broiler_chicken_solution">白肉雞FCR性能提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="broiler_chicken_subtitle">AA/Ross/Cobb等白羽肉雞</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_broiler_chicken1">FCR優化8-12%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_broiler_chicken2">42天體重提升15-20%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_broiler_chicken3">胸肉比例提升5-7%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="profit_broiler_chicken">萬隻雞淨利增加</span> <span class="profit-currency" data-value="334250">NTD 334,250</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">816%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺白肉雞FCR性能提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 10. 吳郭魚存活率提升方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="吳郭魚存活率提升方案" style="animation-delay: 0.95s;">
+                <div class="product-image">
+                    <img src="assets/tilapia-harvest-closeup.jpg" alt="吳郭魚豐收特寫" data-translate-key="tilapia_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="aqua_nutrition">水產營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #0f766e, #14b8a6);" aria-hidden="true">
+                            <i class="fas fa-fish"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="tilapia_solution">吳郭魚存活率提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="tilapia_subtitle">抗鏈球菌·免疫調控·抗氧化｜高密度專用</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_tilapia1">鏈球菌攻毒存活率 52% → 82%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_tilapia2">腸道絨毛高度提升30%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_tilapia3">FCR降低0.12-0.18</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_tilapia4">養殖週期縮短10-18天</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="profit_tilapia_label">每萬尾淨利增加</span> <span class="profit-currency" data-value="17868">NTD 17,868</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">1,250%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺吳郭魚存活率提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 11. 白蝦存活率提升方案 -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="白蝦存活率提升方案" style="animation-delay: 1.0s;">
+                <div class="product-image">
+                    <img src="assets/shrimp-cover.jpg" alt="白蝦存活率提升" data-translate-key="shrimp_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="aqua_nutrition">水產營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #00a8a8, #007d7d);" aria-hidden="true">
+                            <i class="fas fa-shrimp"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="shrimp_solution">白蝦存活率提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="shrimp_subtitle">褐藻素·重組蛋白酶·小核酸｜抗WSSV·抗弧菌</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_shrimp1">抗WSSV存活率↑10%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_shrimp2">弧菌菌落數↓95% (TCBS)</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_shrimp3">FCR 1.32→1.12，省15.1%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_shrimp4">存活率62%→78%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="profit_shrimp_label">每萬尾淨利增加</span> <span class="profit-currency" data-value="21577">NTD 21,577</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">1,850%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺白蝦存活率提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+
+            <!-- 12. 羅氏沼蝦性能提升方案 (新增) -->
+            <article class="product-card fade-in" role="listitem" tabindex="0" aria-label="羅氏沼蝦性能提升方案" style="animation-delay: 1.1s;">
+                <div class="product-image">
+                    <img src="assets/prawn-product-display.jpg" alt="羅氏沼蝦成品展示" data-translate-key="giant_prawn_image_alt" loading="lazy">
+                    <div class="product-category" data-translate-key="aqua_nutrition">水產營養</div>
+                </div>
+                <div class="product-content">
+                    <div class="product-header">
+                        <div class="product-icon" style="background: linear-gradient(135deg, #c44536, #e67e22);" aria-hidden="true">
+                            <i class="fas fa-shrimp"></i>
+                        </div>
+                        <div>
+                            <h3 data-translate-key="giant_prawn_solution">羅氏沼蝦性能提升方案</h3>
+                            <div class="product-subtitle" data-translate-key="giant_prawn_subtitle">泰國蝦專用 · 存活率↑72%+ · FCR↓21%</div>
+                        </div>
+                    </div>
+                    <ul class="product-benefits" role="list">
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_giant_prawn1">存活率從55%提升至72% (↑17%)</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_giant_prawn2">FCR 2.10→1.65，省21%飼料</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="benefit_giant_prawn3">規格齊一度提升40%，軟殼蝦↓60%</span></li>
+                        <li><i class="fas fa-check"></i> <span data-translate-key="profit_giant_prawn_label">每萬尾淨利增加</span> <span class="profit-currency" data-value="19048">NTD 19,048</span></li>
+                    </ul>
+                    <div class="product-footer">
+                        <div class="product-roi">
+                            <span class="roi-value">1,520%</span>
+                            <span class="roi-label" data-translate-key="roi_label">投資報酬率</span>
+                        </div>
+                        <a href="活力旺羅氏沼蝦性能提升方案.html" class="btn-view" data-translate-key="view_solution">查看方案</a>
+                    </div>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <!-- 頁尾 -->
+    <footer role="contentinfo">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section footer-logo">
+                    <div class="footer-logo-img">
+                        <img src="assets/logo.png" alt="活力旺logo" data-translate-key="logo_alt" loading="lazy">
+                    </div>
+                    <h3 data-translate-key="vitality_pro">活力旺</h3>
+                    <p style="opacity: 0.8; font-size: 0.95rem; margin-top: 8px;" data-translate-key="footer_tagline">精準營養解決方案</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h3 data-translate-key="company_name">首池有限公司</h3>
+                    <p data-translate-key="tagline">精準營養 · 先進生物技術 · 永續農業</p>
+                    <p style="margin-top: 16px; font-size: 0.95rem; opacity: 0.8; line-height: 1.6;" data-translate-key="company_description">專注於畜禽精準營養解決方案的研發與應用</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h3 data-translate-key="products_title">產品方案</h3>
+                    <ul class="footer-links" role="list">
+                        <li><a href="活力旺種公豬精液品質提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="boar_solution_short">種公豬精液品質提升</span></a></li>
+                        <li><a href="活力旺懷孕期母豬生產性能優化方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="pregnant_sow_solution_short">懷孕母豬性能優化</span></a></li>
+                        <li><a href="活力旺哺乳母豬性能提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="nursing_sow_solution_short">哺乳母豬性能提升</span></a></li>
+                        <li><a href="活力旺仔豬人工乳性能提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="piglet_milk_solution_short">仔豬人工乳方案</span></a></li>
+                        <li><a href="活力旺育肥豬FCR性能提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="finisher_pig_solution_short">育肥豬FCR優化</span></a></li>
+                        <li><a href="活力旺種雞性能提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="breeding_chicken_solution_short">種雞性能提升</span></a></li>
+                        <li><a href="活力旺蛋雞性能提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="layer_chicken_solution_short">蛋雞性能提升</span></a></li>
+                        <li><a href="活力旺土雞性能提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="native_chicken_solution_short">土雞性能提升</span></a></li>
+                        <li><a href="活力旺白肉雞FCR性能提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="broiler_chicken_solution_short">白肉雞FCR優化</span></a></li>
+                        <!-- 吳郭魚連結 -->
+                        <li><a href="活力旺吳郭魚存活率提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="tilapia_solution_short">吳郭魚存活率提升</span></a></li>
+                        <!-- 白蝦連結 -->
+                        <li><a href="活力旺白蝦存活率提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="shrimp_solution_short">白蝦存活率提升</span></a></li>
+                        <!-- 羅氏沼蝦連結 (新增) -->
+                        <li><a href="活力旺羅氏沼蝦性能提升方案.html"><i class="fas fa-chevron-right"></i> <span data-translate-key="giant_prawn_solution_short">羅氏沼蝦性能提升</span></a></li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h3 data-translate-key="contact_us">聯絡我們</h3>
+                    <ul class="footer-links" role="list">
+                        <li><a href="tel:+886913866080"><i class="fas fa-phone"></i> <span data-translate-key="tech_hotline">技術專線:0913-866-080</span></a></li>
+                        <li><a href="mailto:in1000318@gmail.com"><i class="fas fa-envelope"></i> in1000318@gmail.com</a></li>
+                        <li><a href="https://maps.google.com/?q=台灣省嘉義市自強街195巷33之28號" target="_blank" rel="noopener"><i class="fas fa-map-marker-alt"></i> <span data-translate-key="company_address">台灣省嘉義市自強街195巷33之28號</span></a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                <p data-translate-key="copyright">© 2026 首池有限公司 版權所有 · 活力旺系列產品方案為商業機密，未經授權禁止轉載</p>
+                <p style="margin-top: 12px;" data-translate-key="disclaimer">本網站數據基於行業平均與試驗結果，實際效益可能因管理條件而略有差異</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // === 多語言系統 (完整三語翻譯) ===
+        const translations = {
+            'zh-TW': {
+                'logo_alt': '活力旺logo',
+                'page_title': '活力旺系列產品解決方案',
+                'company_name': '首池有限公司',
+                'tagline': '精準營養 · 先進生物技術 · 永續農業',
+                'highest_roi': '最高投資報酬率',
+                'solutions_count': '專業解決方案',
+                'fastest_payback': '最快投資回收期',
+                'avg_cost': '平均添加成本',
+                'products_title': '活力旺系列產品方案',
+                'products_description': '基於專利發酵平台與國際前沿代謝科學，針對不同畜禽品種的特定需求，提供精準營養解決方案',
+                'swine_nutrition': '豬隻營養',
+                'poultry_nutrition': '家禽營養',
+                'roi_label': '投資報酬率',
+                'view_solution': '查看方案',
+                'boar_solution': '種公豬精液品質提升方案',
+                'boar_breeds': '約克夏/藍瑞斯/杜洛克等品種',
+                'benefit_boar1': '精子畸形率降低7-10%',
+                'benefit_boar2': '精液量提升15-20%',
+                'benefit_boar3': '精子活力提升至85%以上',
+                'profit_boar': '每頭年增淨利',
+                'pregnant_sow_solution': '懷孕期母豬生產性能優化方案',
+                'pregnant_sow_subtitle': '提升產仔數與仔豬初生重',
+                'benefit_sow1': '平均窩產仔數提升0.8-1.2頭',
+                'benefit_sow2': '仔豬初生重增加100-150克',
+                'benefit_sow3': '減少流產與死胎發生率',
+                'benefit_sow4': '優化母豬體況與健康度',
+                'nursing_sow_solution': '哺乳母豬性能提升方案',
+                'nursing_sow_subtitle': '提升泌乳量與仔豬斷奶重',
+                'benefit_nursing_sow1': '泌乳量提升15-20%',
+                'benefit_nursing_sow2': '仔豬21日齡斷奶重增加0.5-0.8kg',
+                'benefit_nursing_sow3': '減少哺乳期體重損失',
+                'benefit_nursing_sow4': '縮短斷奶至發情間隔',
+                'piglet_milk_solution': '仔豬人工乳性能提升方案',
+                'piglet_milk_subtitle': '保育期仔豬專用配方',
+                'benefit_piglet1': '日增重提升50-70克/天',
+                'benefit_piglet2': '腹瀉率降低60-70%',
+                'benefit_piglet3': '飼料轉化率優化',
+                'profit_piglet': '每頭仔豬淨利增加',
+                'finisher_pig_image_alt': '育肥豬FCR性能提升',
+                'finisher_pig_solution': '育肥豬FCR性能提升方案',
+                'finisher_pig_subtitle': '140kg高效益規格 · 屠宰溢價領導品牌',
+                'benefit_finisher1': 'FCR 2.8→<2.0，省88kg飼料',
+                'benefit_finisher2': '出肉率>80%，屠體增重7kg',
+                'benefit_finisher3': '背脂<2.0cm，溢價420元/頭',
+                'benefit_finisher4': '出欄>140kg，雪花溢價100元/頭',
+                'profit_finisher_label': '每頭淨利增加',
+                'finisher_pig_solution_short': '育肥豬FCR優化',
+                'breeding_chicken_solution': '種雞性能提升方案',
+                'breeding_chicken_subtitle': '種公雞×種母雞雙效優化',
+                'benefit_breeding_chicken1': '受精率提升至92-95%',
+                'benefit_breeding_chicken2': '孵化率提升4-5%',
+                'benefit_breeding_chicken3': '健雛率提升至94-97%',
+                'profit_breeding_chicken': '千隻場年增淨利',
+                'layer_chicken_solution': '蛋雞性能提升方案',
+                'layer_chicken_subtitle': '海蘭、羅曼等蛋雞品種專用',
+                'benefit_layer_chicken1': '產蛋率提升5-8%',
+                'benefit_layer_chicken2': '蛋黃品質提升3-4級',
+                'benefit_layer_chicken3': '暗斑蛋減少70-80%',
+                'profit_layer_chicken': '每隻蛋雞淨利增加',
+                'native_chicken_solution': '土雞性能提升方案',
+                'native_chicken_subtitle': '紅羽/黑羽土雞專用',
+                'benefit_native_chicken1': '增重效率提升5-8%',
+                'benefit_native_chicken2': '料肉比優化3-5%',
+                'benefit_native_chicken3': '成活率提升2-3%',
+                'profit_native_chicken': '每隻土雞淨利增加',
+                'broiler_chicken_solution': '白肉雞FCR性能提升方案',
+                'broiler_chicken_subtitle': 'AA/Ross/Cobb等白羽肉雞',
+                'benefit_broiler_chicken1': 'FCR優化8-12%',
+                'benefit_broiler_chicken2': '42天體重提升15-20%',
+                'benefit_broiler_chicken3': '胸肉比例提升5-7%',
+                'profit_broiler_chicken': '萬隻雞淨利增加',
+                'aqua_nutrition': '水產營養',
+                'shrimp_image_alt': '白蝦存活率提升',
+                'shrimp_solution': '白蝦存活率提升方案',
+                'shrimp_subtitle': '褐藻素·重組蛋白酶·小核酸｜抗WSSV·抗弧菌',
+                'benefit_shrimp1': '抗WSSV存活率↑10%',
+                'benefit_shrimp2': '弧菌菌落數↓95% (TCBS)',
+                'benefit_shrimp3': 'FCR 1.32→1.12，省15.1%',
+                'benefit_shrimp4': '存活率62%→78%',
+                'profit_shrimp_label': '每萬尾淨利增加',
+                'shrimp_solution_short': '白蝦存活率提升',
+                'tilapia_solution': '吳郭魚存活率提升方案',
+                'tilapia_subtitle': '抗鏈球菌·免疫調控·抗氧化｜高密度專用',
+                'benefit_tilapia1': '鏈球菌攻毒存活率 52% → 82%',
+                'benefit_tilapia2': '腸道絨毛高度提升30%',
+                'benefit_tilapia3': 'FCR降低0.12-0.18',
+                'benefit_tilapia4': '養殖週期縮短10-18天',
+                'profit_tilapia_label': '每萬尾淨利增加',
+                'tilapia_image_alt': '吳郭魚豐收特寫',
+                'tilapia_solution_short': '吳郭魚存活率提升',
+                'giant_prawn_image_alt': '羅氏沼蝦成品展示',
+                'giant_prawn_solution': '羅氏沼蝦性能提升方案',
+                'giant_prawn_subtitle': '泰國蝦專用 · 存活率↑72%+ · FCR↓21%',
+                'benefit_giant_prawn1': '存活率從55%提升至72% (↑17%)',
+                'benefit_giant_prawn2': 'FCR 2.10→1.65，省21%飼料',
+                'benefit_giant_prawn3': '規格齊一度提升40%，軟殼蝦↓60%',
+                'profit_giant_prawn_label': '每萬尾淨利增加',
+                'giant_prawn_solution_short': '羅氏沼蝦性能提升',
+                'vitality_pro': '活力旺',
+                'footer_tagline': '精準營養解決方案',
+                'company_description': '專注於畜禽精準營養解決方案的研發與應用',
+                'boar_solution_short': '種公豬精液品質提升',
+                'pregnant_sow_solution_short': '懷孕母豬性能優化',
+                'nursing_sow_solution_short': '哺乳母豬性能提升',
+                'piglet_milk_solution_short': '仔豬人工乳方案',
+                'breeding_chicken_solution_short': '種雞性能提升',
+                'layer_chicken_solution_short': '蛋雞性能提升',
+                'native_chicken_solution_short': '土雞性能提升',
+                'broiler_chicken_solution_short': '白肉雞FCR優化',
+                'contact_us': '聯絡我們',
+                'tech_hotline': '技術專線:0913-866-080',
+                'company_address': '台灣省嘉義市自強街195巷33之28號',
+                'copyright': '© 2026 首池有限公司 版權所有 · 活力旺系列產品方案為商業機密，未經授權禁止轉載',
+                'disclaimer': '本網站數據基於行業平均與試驗結果，實際效益可能因管理條件而略有差異',
+                'boar_image_alt': '種公豬精液品質提升',
+                'pregnant_sow_image_alt': '懷孕母豬生產性能優化',
+                'nursing_sow_image_alt': '哺乳母豬性能提升',
+                'piglet_milk_image_alt': '仔豬人工乳性能提升',
+                'breeding_chicken_image_alt': '種雞性能提升',
+                'layer_chicken_image_alt': '蛋雞性能提升',
+                'native_chicken_image_alt': '土雞性能提升',
+                'broiler_chicken_image_alt': '白肉雞FCR性能提升'
+            },
+            'zh-CN': {
+                'logo_alt': '活力旺logo',
+                'page_title': '活力旺系列产品解决方案',
+                'company_name': '首池有限公司',
+                'tagline': '精准营养 · 先进生物技术 · 永续农业',
+                'highest_roi': '最高投资报酬率',
+                'solutions_count': '专业解决方案',
+                'fastest_payback': '最快投资回收期',
+                'avg_cost': '平均添加成本',
+                'products_title': '活力旺系列产品方案',
+                'products_description': '基于专利发酵平台与国际前沿代谢科学，针对不同畜禽品种的特定需求，提供精准营养解决方案',
+                'swine_nutrition': '猪只营养',
+                'poultry_nutrition': '家禽营养',
+                'roi_label': '投资报酬率',
+                'view_solution': '查看方案',
+                'boar_solution': '种公猪精液品质提升方案',
+                'boar_breeds': '约克夏/蓝瑞斯/杜洛克等品种',
+                'benefit_boar1': '精子畸形率降低7-10%',
+                'benefit_boar2': '精液量提升15-20%',
+                'benefit_boar3': '精子活力提升至85%以上',
+                'profit_boar': '每头年增净利',
+                'pregnant_sow_solution': '怀孕期母猪生产性能优化方案',
+                'pregnant_sow_subtitle': '提升产仔数与仔猪初生重',
+                'benefit_sow1': '平均窝产仔数提升0.8-1.2头',
+                'benefit_sow2': '仔猪初生重增加100-150克',
+                'benefit_sow3': '减少流产与死胎发生率',
+                'benefit_sow4': '优化母猪体况与健康度',
+                'nursing_sow_solution': '哺乳母猪性能提升方案',
+                'nursing_sow_subtitle': '提升泌乳量与仔猪断奶重',
+                'benefit_nursing_sow1': '泌乳量提升15-20%',
+                'benefit_nursing_sow2': '仔猪21日龄断奶重增加0.5-0.8kg',
+                'benefit_nursing_sow3': '减少哺乳期体重损失',
+                'benefit_nursing_sow4': '缩短断奶至发情间隔',
+                'piglet_milk_solution': '仔猪人工乳性能提升方案',
+                'piglet_milk_subtitle': '保育期仔猪专用配方',
+                'benefit_piglet1': '日增重提升50-70克/天',
+                'benefit_piglet2': '腹泻率降低60-70%',
+                'benefit_piglet3': '饲料转化率优化',
+                'profit_piglet': '每头仔猪净利增加',
+                'finisher_pig_image_alt': '育肥猪FCR性能提升',
+                'finisher_pig_solution': '育肥猪FCR性能提升方案',
+                'finisher_pig_subtitle': '140kg高效益规格 · 屠宰溢价领导品牌',
+                'benefit_finisher1': 'FCR 2.8→<2.0，省88kg饲料',
+                'benefit_finisher2': '出肉率>80%，屠体增重7kg',
+                'benefit_finisher3': '背脂<2.0cm，溢价420元/头',
+                'benefit_finisher4': '出栏>140kg，雪花溢价100元/头',
+                'profit_finisher_label': '每头净利增加',
+                'finisher_pig_solution_short': '育肥猪FCR优化',
+                'breeding_chicken_solution': '种鸡性能提升方案',
+                'breeding_chicken_subtitle': '种公鸡×种母鸡双效优化',
+                'benefit_breeding_chicken1': '受精率提升至92-95%',
+                'benefit_breeding_chicken2': '孵化率提升4-5%',
+                'benefit_breeding_chicken3': '健雏率提升至94-97%',
+                'profit_breeding_chicken': '千只场年增净利',
+                'layer_chicken_solution': '蛋鸡性能提升方案',
+                'layer_chicken_subtitle': '海兰、罗曼等蛋鸡品种专用',
+                'benefit_layer_chicken1': '产蛋率提升5-8%',
+                'benefit_layer_chicken2': '蛋黄品质提升3-4级',
+                'benefit_layer_chicken3': '暗斑蛋减少70-80%',
+                'profit_layer_chicken': '每只蛋鸡净利增加',
+                'native_chicken_solution': '土鸡性能提升方案',
+                'native_chicken_subtitle': '红羽/黑羽土鸡专用',
+                'benefit_native_chicken1': '增重效率提升5-8%',
+                'benefit_native_chicken2': '料肉比优化3-5%',
+                'benefit_native_chicken3': '成活率提升2-3%',
+                'profit_native_chicken': '每只土鸡净利增加',
+                'broiler_chicken_solution': '白肉鸡FCR性能提升方案',
+                'broiler_chicken_subtitle': 'AA/Ross/Cobb等白羽肉鸡',
+                'benefit_broiler_chicken1': 'FCR优化8-12%',
+                'benefit_broiler_chicken2': '42天体重提升15-20%',
+                'benefit_broiler_chicken3': '胸肉比例提升5-7%',
+                'profit_broiler_chicken': '万只鸡净利增加',
+                'aqua_nutrition': '水产营养',
+                'shrimp_image_alt': '白虾存活率提升',
+                'shrimp_solution': '白虾存活率提升方案',
+                'shrimp_subtitle': '褐藻素·重组蛋白酶·小核酸｜抗WSSV·抗弧菌',
+                'benefit_shrimp1': '抗WSSV存活率↑10%',
+                'benefit_shrimp2': '弧菌菌落数↓95% (TCBS)',
+                'benefit_shrimp3': 'FCR 1.32→1.12，省15.1%',
+                'benefit_shrimp4': '存活率62%→78%',
+                'profit_shrimp_label': '每万尾净利增加',
+                'shrimp_solution_short': '白虾存活率提升',
+                'tilapia_solution': '罗非鱼存活率提升方案',
+                'tilapia_subtitle': '抗链球菌·免疫调控·抗氧化｜高密度专用',
+                'benefit_tilapia1': '链球菌攻毒存活率 52% → 82%',
+                'benefit_tilapia2': '肠道绒毛高度提升30%',
+                'benefit_tilapia3': 'FCR降低0.12-0.18',
+                'benefit_tilapia4': '养殖周期缩短10-18天',
+                'profit_tilapia_label': '每万尾净利增加',
+                'tilapia_image_alt': '罗非鱼丰收特写',
+                'tilapia_solution_short': '罗非鱼存活率提升',
+                'giant_prawn_image_alt': '罗氏沼虾成品展示',
+                'giant_prawn_solution': '罗氏沼虾性能提升方案',
+                'giant_prawn_subtitle': '泰国虾专用 · 存活率↑72%+ · FCR↓21%',
+                'benefit_giant_prawn1': '存活率从55%提升至72% (↑17%)',
+                'benefit_giant_prawn2': 'FCR 2.10→1.65，省21%饲料',
+                'benefit_giant_prawn3': '规格齐一度提升40%，软壳虾↓60%',
+                'profit_giant_prawn_label': '每万尾净利增加',
+                'giant_prawn_solution_short': '罗氏沼虾性能提升',
+                'vitality_pro': '活力旺',
+                'footer_tagline': '精准营养解决方案',
+                'company_description': '专注于畜禽精准营养解决方案的研发与应用',
+                'boar_solution_short': '种公猪精液品质提升',
+                'pregnant_sow_solution_short': '怀孕母猪性能优化',
+                'nursing_sow_solution_short': '哺乳母猪性能提升',
+                'piglet_milk_solution_short': '仔猪人工乳方案',
+                'breeding_chicken_solution_short': '种鸡性能提升',
+                'layer_chicken_solution_short': '蛋鸡性能提升',
+                'native_chicken_solution_short': '土鸡性能提升',
+                'broiler_chicken_solution_short': '白肉鸡FCR优化',
+                'contact_us': '联系我们',
+                'tech_hotline': '技术专线:0913-866-080',
+                'company_address': '台湾省嘉义市自强街195巷33之28号',
+                'copyright': '© 2026 首池有限公司 版权所有 · 活力旺系列产品方案为商业机密，未经授权禁止转载',
+                'disclaimer': '本网站数据基于行业平均与试验结果，实际效益可能因管理条件而略有差异',
+                'boar_image_alt': '种公猪精液品质提升',
+                'pregnant_sow_image_alt': '怀孕母猪生产性能优化',
+                'nursing_sow_image_alt': '哺乳母猪性能提升',
+                'piglet_milk_image_alt': '仔猪人工乳性能提升',
+                'breeding_chicken_image_alt': '种鸡性能提升',
+                'layer_chicken_image_alt': '蛋鸡性能提升',
+                'native_chicken_image_alt': '土鸡性能提升',
+                'broiler_chicken_image_alt': '白肉鸡FCR性能提升'
+            },
+            'en': {
+                'logo_alt': 'Vitality Pro logo',
+                'page_title': 'Vitality Pro Series Product Solutions',
+                'company_name': 'First Pond Co., Ltd.',
+                'tagline': 'Precision Nutrition · Advanced Biotechnology · Sustainable Agriculture',
+                'highest_roi': 'Highest ROI',
+                'solutions_count': 'Professional Solutions',
+                'fastest_payback': 'Fastest Payback Period',
+                'avg_cost': 'Average Addition Cost',
+                'products_title': 'Vitality Pro Series Product Plans',
+                'products_description': 'Based on patented fermentation platform and cutting-edge metabolic science, providing precision nutrition solutions for specific needs of different livestock and poultry breeds',
+                'swine_nutrition': 'Swine Nutrition',
+                'poultry_nutrition': 'Poultry Nutrition',
+                'roi_label': 'ROI',
+                'view_solution': 'View Plan',
+                'boar_solution': 'Boar Semen Quality Improvement Program',
+                'boar_breeds': 'Yorkshire/Landrace/Duroc and other breeds',
+                'benefit_boar1': 'Sperm abnormality rate reduced by 7-10%',
+                'benefit_boar2': 'Semen volume increased by 15-20%',
+                'benefit_boar3': 'Sperm motility increased to over 85%',
+                'profit_boar': 'Annual net profit increase per head',
+                'pregnant_sow_solution': 'Pregnant Sow Production Performance Optimization Program',
+                'pregnant_sow_subtitle': 'Increase litter size and piglet birth weight',
+                'benefit_sow1': 'Average litter size increased by 0.8-1.2 piglets',
+                'benefit_sow2': 'Piglet birth weight increased by 100-150g',
+                'benefit_sow3': 'Reduce abortion and stillbirth rates',
+                'benefit_sow4': 'Optimize sow body condition and health',
+                'nursing_sow_solution': 'Lactating Sow Performance Improvement Program',
+                'nursing_sow_subtitle': 'Increase milk production and piglet weaning weight',
+                'benefit_nursing_sow1': 'Milk production increased by 15-20%',
+                'benefit_nursing_sow2': 'Piglet 21-day weaning weight increased by 0.5-0.8kg',
+                'benefit_nursing_sow3': 'Reduce lactation weight loss',
+                'benefit_nursing_sow4': 'Shorten weaning-to-estrus interval',
+                'piglet_milk_solution': 'Piglet Milk Replacer Performance Improvement Program',
+                'piglet_milk_subtitle': 'Special formula for nursery piglets',
+                'benefit_piglet1': 'Daily gain increased by 50-70g/day',
+                'benefit_piglet2': 'Diarrhea rate reduced by 60-70%',
+                'benefit_piglet3': 'Feed conversion rate optimized',
+                'profit_piglet': 'Net profit increase per piglet',
+                'finisher_pig_image_alt': 'Finisher pig FCR performance improvement',
+                'finisher_pig_solution': 'Finisher Pig FCR Performance Improvement Program',
+                'finisher_pig_subtitle': '140kg high-profit specification · Slaughter premium leader',
+                'benefit_finisher1': 'FCR 2.8→<2.0, save 88kg feed',
+                'benefit_finisher2': 'Carcass yield >80%, +7kg carcass weight',
+                'benefit_finisher3': 'Backfat <2.0cm, NTD 420 premium/head',
+                'benefit_finisher4': 'Market weight >140kg, marbling premium NTD 100/head',
+                'profit_finisher_label': 'Net profit increase per head',
+                'finisher_pig_solution_short': 'Finisher Pig FCR Optimization',
+                'breeding_chicken_solution': 'Breeder Chicken Performance Improvement Program',
+                'breeding_chicken_subtitle': 'Rooster × Hen dual-effect optimization',
+                'benefit_breeding_chicken1': 'Fertility rate increased to 92-95%',
+                'benefit_breeding_chicken2': 'Hatchability increased by 4-5%',
+                'benefit_breeding_chicken3': 'Healthy chick rate increased to 94-97%',
+                'profit_breeding_chicken': 'Annual net profit increase per 1,000 breeders',
+                'layer_chicken_solution': 'Layer Chicken Performance Improvement Program',
+                'layer_chicken_subtitle': 'Hy-Line, Lohmann and other layer breeds',
+                'benefit_layer_chicken1': 'Egg production rate increased by 5-8%',
+                'benefit_layer_chicken2': 'Yolk quality improved by 3-4 grades',
+                'benefit_layer_chicken3': 'Blood-spotted eggs reduced by 70-80%',
+                'profit_layer_chicken': 'Net profit increase per layer',
+                'native_chicken_solution': 'Native Chicken Performance Improvement Program',
+                'native_chicken_subtitle': 'Red-feather/Black-feather native chickens',
+                'benefit_native_chicken1': 'Weight gain efficiency increased by 5-8%',
+                'benefit_native_chicken2': 'Feed conversion ratio optimized by 3-5%',
+                'benefit_native_chicken3': 'Survival rate increased by 2-3%',
+                'profit_native_chicken': 'Net profit increase per native chicken',
+                'broiler_chicken_solution': 'Broiler FCR Performance Improvement Program',
+                'broiler_chicken_subtitle': 'AA/Ross/Cobb and other white-feather broilers',
+                'benefit_broiler_chicken1': 'FCR optimized by 8-12%',
+                'benefit_broiler_chicken2': '42-day body weight increased by 15-20%',
+                'benefit_broiler_chicken3': 'Breast meat percentage increased by 5-7%',
+                'profit_broiler_chicken': 'Net profit increase per 10,000 broilers',
+                'aqua_nutrition': 'Aquatic Nutrition',
+                'shrimp_image_alt': 'White Shrimp Survival Enhancement',
+                'shrimp_solution': 'White Shrimp Survival Enhancement Program',
+                'shrimp_subtitle': 'Fucoxanthin·Recombinant Protease·Small Nucleic Acid | Anti-WSSV·Anti-Vibrio',
+                'benefit_shrimp1': 'Anti-WSSV survival ↑10%',
+                'benefit_shrimp2': 'Vibrio colonies ↓95% (TCBS)',
+                'benefit_shrimp3': 'FCR 1.32→1.12, save 15.1%',
+                'benefit_shrimp4': 'Survival 62%→78%',
+                'profit_shrimp_label': 'Net profit per 10,000 shrimp',
+                'shrimp_solution_short': 'Shrimp Survival',
+                'tilapia_solution': 'Tilapia Survival Enhancement Program',
+                'tilapia_subtitle': 'Anti-Streptococcus·Immunomodulation·Antioxidant | High-density specific',
+                'benefit_tilapia1': 'Streptococcus challenge survival 52% → 82%',
+                'benefit_tilapia2': 'Intestinal villi height increased by 30%',
+                'benefit_tilapia3': 'FCR reduced by 0.12-0.18',
+                'benefit_tilapia4': 'Culture cycle shortened by 10-18 days',
+                'profit_tilapia_label': 'Net profit per 10,000 fish',
+                'tilapia_image_alt': 'Tilapia harvest close-up',
+                'tilapia_solution_short': 'Tilapia Survival',
+                'giant_prawn_image_alt': 'Giant prawn product display',
+                'giant_prawn_solution': 'Giant Prawn (Macrobrachium rosenbergii) Performance Improvement Program',
+                'giant_prawn_subtitle': 'For Giant Freshwater Prawn · Survival ↑72%+ · FCR ↓21%',
+                'benefit_giant_prawn1': 'Survival increased from 55% to 72% (↑17%)',
+                'benefit_giant_prawn2': 'FCR 2.10→1.65, save 21% feed',
+                'benefit_giant_prawn3': 'Size uniformity ↑40%, soft-shell ↓60%',
+                'profit_giant_prawn_label': 'Net profit per 10,000 prawns',
+                'giant_prawn_solution_short': 'Giant Prawn Performance',
+                'vitality_pro': 'Vitality Pro',
+                'footer_tagline': 'Precision Nutrition Solutions',
+                'company_description': 'Focus on R&D and application of precision nutrition solutions for livestock and poultry',
+                'boar_solution_short': 'Boar Semen Quality Improvement',
+                'pregnant_sow_solution_short': 'Pregnant Sow Performance Optimization',
+                'nursing_sow_solution_short': 'Lactating Sow Performance Improvement',
+                'piglet_milk_solution_short': 'Piglet Milk Replacer Program',
+                'breeding_chicken_solution_short': 'Breeder Chicken Performance Improvement',
+                'layer_chicken_solution_short': 'Layer Chicken Performance Improvement',
+                'native_chicken_solution_short': 'Native Chicken Performance Improvement',
+                'broiler_chicken_solution_short': 'Broiler FCR Optimization',
+                'contact_us': 'Contact Us',
+                'tech_hotline': 'Technical Hotline: +886-913-866-080',
+                'company_address': 'No. 33-28, Lane 195, Ziqiang Street, Chiayi City, Taiwan',
+                'copyright': '© 2026 First Pond Co., Ltd. All Rights Reserved · Vitality Pro Series Product Plans are trade secrets, unauthorized reproduction prohibited',
+                'disclaimer': 'Data on this website is based on industry averages and trial results. Actual benefits may vary slightly depending on management conditions.',
+                'boar_image_alt': 'Boar semen quality improvement',
+                'pregnant_sow_image_alt': 'Pregnant sow production optimization',
+                'nursing_sow_image_alt': 'Nursing sow performance improvement',
+                'piglet_milk_image_alt': 'Piglet milk replacer performance improvement',
+                'breeding_chicken_image_alt': 'Breeder chicken performance improvement',
+                'layer_chicken_image_alt': 'Layer chicken performance improvement',
+                'native_chicken_image_alt': 'Native chicken performance improvement',
+                'broiler_chicken_image_alt': 'Broiler chicken FCR improvement'
+            }
+        };
+
+        let currentLang = 'zh-TW';
+        const exchangeRates = { 'zh-TW': 1, 'zh-CN': 0.2192, 'en': 0.0320 };
+        const currencySymbols = { 'zh-TW': 'NTD ', 'zh-CN': '¥', 'en': '$' };
+
+        function updateCurrencyValues(rate) {
+            document.querySelectorAll('.profit-currency[data-value]').forEach(el => {
+                const rawVal = parseFloat(el.dataset.value);
+                if (isNaN(rawVal)) return;
+                let converted = rawVal * rate;
+                let formatted = formatCurrency(converted);
+                el.textContent = `${currencySymbols[currentLang]}${formatted}`;
+            });
+            const avgCost = document.querySelector('.stat-value[data-unit="per_ton"]');
+            if (avgCost) {
+                const rawVal = parseFloat(avgCost.dataset.value);
+                if (!isNaN(rawVal)) {
+                    let converted = rawVal * rate;
+                    let formatted = formatCurrency(converted);
+                    let unit = (currentLang === 'en') ? 'ton' : '噸';
+                    avgCost.textContent = `${currencySymbols[currentLang]}${formatted}/${unit}`;
+                }
+            }
+        }
+
+        function formatCurrency(value) {
+            let absVal = Math.abs(value);
+            let formatted;
+            if (absVal === 0) formatted = '0';
+            else if (absVal >= 1) formatted = value.toFixed(2).replace(/\.0+$|(\.[0-9]*[1-9])0+$/, '$1');
+            else if (absVal >= 0.01) formatted = value.toFixed(3).replace(/\.0+$|(\.[0-9]*[1-9])0+$/, '$1');
+            else formatted = value.toFixed(4).replace(/\.0+$|(\.[0-9]*[1-9])0+$/, '$1');
+            if (absVal >= 1000) {
+                let parts = formatted.split('.');
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                formatted = parts.join('.');
+            }
+            return formatted;
+        }
+
+        function updatePageContent(lang, rate) {
+            currentLang = lang;
+            document.querySelectorAll('[data-translate-key]').forEach(el => {
+                const key = el.dataset.translateKey;
+                if (translations[lang] && translations[lang][key]) {
+                    if (el.tagName === 'IMG' && el.getAttribute('data-translate-key') === key) {
+                        el.alt = translations[lang][key];
+                    } else {
+                        el.textContent = translations[lang][key];
+                    }
+                }
+            });
+            updateCurrencyValues(rate);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const lang = this.dataset.lang;
+                    const rate = parseFloat(this.dataset.rate);
+                    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    updatePageContent(lang, rate);
+                });
+            });
+            updatePageContent('zh-TW', 1);
+            document.querySelectorAll('.product-card').forEach(card => {
+                card.addEventListener('click', function(e) {
+                    if (!e.target.closest('.btn-view')) {
+                        const link = this.querySelector('.btn-view');
+                        if (link) window.location.href = link.href;
+                    }
+                });
+            });
+        });
+    </script>
+
+<!-- SEO: Schema.org JSON-LD -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "首池有限公司",
+  "alternateName": "First Pond Co., Ltd.",
+  "url": "https://richtrong.com",
+  "logo": "https://richtrong.com/assets/logo.png",
+  "description": "首池有限公司專注於畜禽精準營養解決方案的研發與應用，活力旺系列產品涵蓋豬隻、家禽、水產等多領域。",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "自強街195巷33之28號",
+    "addressLocality": "嘉義市",
+    "addressCountry": "TW"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "telephone": "+886-913-866-080",
+    "contactType": "customer service",
+    "availableLanguage": ["zh-TW", "zh-CN", "en"]
+  },
+  "sameAs": []
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "活力旺 - 首池有限公司",
+  "url": "https://richtrong.com",
+  "description": "活力旺畜牧飼料添加劑精準營養解決方案",
+  "publisher": {
+    "@type": "Organization",
+    "name": "首池有限公司"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "name": "首池有限公司",
+  "image": "https://richtrong.com/assets/logo.png",
+  "url": "https://richtrong.com",
+  "telephone": "+886-913-866-080",
+  "email": "in1000318@gmail.com",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "自強街195巷33之28號",
+    "addressLocality": "嘉義市",
+    "addressRegion": "嘉義市",
+    "addressCountry": "TW"
+  },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": "23.4791",
+    "longitude": "120.4414"
+  },
+  "openingHoursSpecification": {
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday"],
+    "opens": "08:00",
+    "closes": "17:00"
+  },
+  "priceRange": "$",
+  "currenciesAccepted": "TWD"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "首頁",
+      "item": "https://richtrong.com/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "活力旺系列產品方案",
+  "description": "首池有限公司活力旺系列畜牧飼料添加劑產品方案",
+  "numberOfItems": 12,
+  "itemListElement": [
+    {"@type": "ListItem", "position": 1, "name": "種公豬精液品質提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E7%A8%AE%E5%85%AC%E8%B1%AC%E7%B2%BE%E6%B6%B2%E5%93%81%E8%B3%AA%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 2, "name": "懷孕期母豬生產性能優化方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E6%87%B7%E5%AD%95%E6%9C%9F%E6%AF%8D%E8%B1%AC%E7%94%9F%E7%94%A2%E6%80%A7%E8%83%BD%E5%84%AA%E5%8C%96%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 3, "name": "哺乳母豬性能提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E5%93%BA%E4%B9%B3%E6%AF%8D%E8%B1%AC%E6%80%A7%E8%83%BD%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 4, "name": "仔豬人工乳性能提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E4%BB%94%E8%B1%AC%E4%BA%BA%E5%B7%A5%E4%B9%B3%E6%80%A7%E8%83%BD%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 5, "name": "育肥豬FCR性能提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E8%82%B2%E8%82%A5%E8%B1%ACFCR%E6%80%A7%E8%83%BD%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 6, "name": "種雞性能提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E7%A8%AE%E9%9B%9E%E6%80%A7%E8%83%BD%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 7, "name": "蛋雞性能提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E8%9B%8B%E9%9B%9E%E6%80%A7%E8%83%BD%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 8, "name": "土雞性能提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E5%9C%9F%E9%9B%9E%E6%80%A7%E8%83%BD%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 9, "name": "白肉雞FCR性能提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E7%99%BD%E8%82%89%E9%9B%9EFCR%E6%80%A7%E8%83%BD%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 10, "name": "吳郭魚存活率提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E5%90%B3%E9%83%AD%E9%AD%9A%E5%AD%98%E6%B4%BB%E7%8E%87%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 11, "name": "白蝦存活率提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E7%99%BD%E8%9D%A6%E5%AD%98%E6%B4%BB%E7%8E%87%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"},
+    {"@type": "ListItem", "position": 12, "name": "羅氏沼蝦性能提升方案", "url": "https://richtrong.com/%E6%B4%BB%E5%8A%9B%E6%97%BA%E7%BE%85%E6%B0%8F%E6%B2%BC%E8%9D%A6%E6%80%A7%E8%83%BD%E6%8F%90%E5%8D%87%E6%96%B9%E6%A1%88.html"}
+  ]
+}
+</script>
+</body>
+</html>
+<script>
+(function() {
+  // 原始連結 → 實際檔案名稱（請根據您的實際檔名調整）
+  const linkMap = {
+    "boar-semen-quality.html": "活力旺種公豬精液品質提升方案.html",
+    "pregnant-sow-optimization.html": "活力旺懷孕期母豬生產性能優化方案.html",
+    "nursing-sow-improvement.html": "活力旺哺乳母豬性能提升方案.html",
+    "piglet-milk-replacer.html": "活力旺仔豬人工乳性能提升方案.html",
+    "finisher-pig-fcr.html": "活力旺育肥豬FCR性能提升方案.html",
+    "breeder-chicken.html": "活力旺種雞性能提升方案.html",
+    "layer-chicken.html": "活力旺蛋雞性能提升方案.html",
+    "native-chicken.html": "活力旺土雞性能提升方案.html",
+    "broiler-fcr.html": "活力旺白肉雞FCR性能提升方案.html",
+    "tilapia-survival.html": "活力旺吳郭魚存活率提升方案.html",
+    "shrimp-survival.html": "活力旺白蝦存活率提升方案.html",
+    "giant-prawn.html": "活力旺羅氏沼蝦性能提升方案.html"
+  };
+
+  // 只修正頁尾 .footer-links 內的連結
+  document.querySelectorAll('.footer-links a').forEach(link => {
+    const href = link.getAttribute('href');
+    if (linkMap[href] && !href.startsWith('http')) {
+      link.href = linkMap[href];  // 替換為正確的中文檔名
+    }
+  });
+})();
+</script>
