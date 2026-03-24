@@ -549,7 +549,7 @@
     </div>`;
   }
 
-  if (Object.keys(model).length || topFeats.length) {
+  if (lam.score !== undefined || Object.keys(model).length || topFeats.length) {
     const featRows = topFeats.map((f,i) => {
       // importance 可能是小數(0.25)或百分比(25.1)，統一轉成百分比
       const raw = f.importance;
