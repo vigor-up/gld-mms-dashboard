@@ -12,7 +12,8 @@ import json
 import argparse
 import requests
 import boto3
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+TZ_TAIPEI = timezone(timedelta(hours=8))
 import yfinance as yf
 from fredapi import Fred
 import pandas as pd
@@ -102,7 +103,7 @@ class GldMmsUpdater:
             if df.empty: return False
             df.reset_index(inplace=True)
             time_col = 'datetime' if 'datetime' in df.columns else df.columns[0]
-            df['date_full'] = pd.to_datetime(df[time_col]).dt.strftime('%Y-%m-%d %H:%M')
+            df['date_full'] = (pd.to_datetime(df[time_col]).dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')).dt.strftime('%Y-%m-%d %H:%M')
             if 'adj close' in df.columns: df['close'] = df['adj close']
 
             # OBV
@@ -272,7 +273,7 @@ class GldMmsUpdater:
     # ── Step 6: 更新 HTML ──────────────────────────────────────
     def update_html(self, html_file):
         data = {
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.now(tz=TZ_TAIPEI).isoformat(),
             'assets': self.assets,
             'macro': self.macro,
             'signals': self.calculate_signals(),
