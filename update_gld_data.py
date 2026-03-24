@@ -289,6 +289,9 @@ class GldMmsUpdater:
                 'score': self.lambda_result.get('score'),
                 'signal': self.lambda_result.get('signal'),
                 'status': self.lambda_result.get('status', '未連線'),
+                'prob_up': self.lambda_result.get('prob_up'),
+                'prob_dn': self.lambda_result.get('prob_dn'),
+                'model': self.lambda_result.get('model', {}),
                 'smart_money': self.lambda_result.get('smart_money', {}),
                 'performance': self.lambda_result.get('performance', {})
             }
