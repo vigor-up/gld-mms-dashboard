@@ -131,7 +131,9 @@ class GldMmsUpdater:
             self.assets[ticker] = df.tail(100).to_dict('records')
             return True
         except Exception as e:
+            import traceback
             print(f"[ERROR] {ticker} 失敗: {e}")
+            traceback.print_exc()
             return False
 
     def fetch_macro_data(self):
