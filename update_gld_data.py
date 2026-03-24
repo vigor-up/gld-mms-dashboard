@@ -99,8 +99,12 @@ class GldMmsUpdater:
         print(f"[INFO] 獲取 {asset_name} ({ticker})...")
         try:
             df = yf.download(ticker, period=period, interval=interval, progress=False)
+            print(f"[DEBUG] {ticker} raw shape={df.shape}, cols={list(df.columns)[:5]}")
             df = self._clean_df(df)
-            if df.empty: return False
+            print(f"[DEBUG] {ticker} clean cols={list(df.columns)[:8]}, empty={df.empty}")
+            if df.empty:
+                print(f"[WARN] {ticker} dataframe empty after clean")
+                return False
             df.reset_index(inplace=True)
             time_col = 'datetime' if 'datetime' in df.columns else df.columns[0]
             # 轉台北時間顯示
