@@ -106,7 +106,9 @@ class GldMmsUpdater:
                 print(f"[WARN] {ticker} dataframe empty after clean")
                 return False
             df.reset_index(inplace=True)
+            print(f"[DEBUG] {ticker} after reset_index cols={list(df.columns)[:5]}")
             time_col = 'datetime' if 'datetime' in df.columns else df.columns[0]
+            print(f"[DEBUG] {ticker} time_col={time_col}")
             # 轉台北時間顯示
             _dt = pd.to_datetime(df[time_col])
             if _dt.dt.tz is None:
@@ -132,7 +134,9 @@ class GldMmsUpdater:
             df['bear_div'] = (df['close'] > df['close'].shift(3)) & (df['obv'] < df['obv'].shift(3))
             df['is_pin_bar'] = self._detect_pin_bar(df).astype(bool)
 
-            self.assets[ticker] = df.tail(100).to_dict('records')
+            records = df.tail(100).to_dict('records')
+            print(f"[DEBUG] {ticker} records count={len(records)}, sample_keys={list(records[-1].keys())[:5] if records else '—'}")
+            self.assets[ticker] = records
             return True
         except Exception as e:
             import traceback
