@@ -618,7 +618,44 @@
         ⚠️ <strong>免責聲明：</strong>XGBoost 機率為統計模型輸出，基於歷史數據訓練，不保證未來表現。漲跌機率 ≥ 72% 才觸發推播。
       </div>`;
   } else {
-    mcEl.innerHTML = '<div class="empty-state" style="padding:24px">📡 等待 Lambda 模型數據...</div>';
+    const scoreVal = lam.score ?? '—';
+    const sigVal   = lam.signal || '—';
+    const statVal  = lam.status || 'v8.0 XGBoost';
+    const wr1d = (lam.performance || {}).cv_win_rate_1d;
+    const wr5d = (lam.performance || {}).cv_win_rate_5d;
+    const scoreCls = scoreVal >= 60 ? 'bull' : scoreVal <= 40 ? 'bear' : 'neutral';
+    const perf2 = lam.performance || {};
+    mcEl.innerHTML = `
+      <div style="margin-bottom:16px">
+        <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">🤖 XGBoost AI 模型評分</div>
+        <div class="horizons-grid">
+          <div class="horizon-item">
+            <div class="horizon-label">模型分數</div>
+            <div class="horizon-prob ${scoreCls}">${scoreVal}</div>
+            <div class="horizon-wr">${sigVal}</div>
+          </div>
+          <div class="horizon-item">
+            <div class="horizon-label">CV勝率 (1D)</div>
+            <div class="horizon-prob ${wr1d >= 60 ? 'bull' : wr1d <= 40 ? 'bear' : 'neutral'}">${wr1d != null ? wr1d+'%' : '—'}</div>
+            <div class="horizon-wr">隔日預測</div>
+          </div>
+          <div class="horizon-item">
+            <div class="horizon-label">CV勝率 (5D)</div>
+            <div class="horizon-prob ${wr5d >= 60 ? 'bull' : wr5d <= 40 ? 'bear' : 'neutral'}">${wr5d != null ? wr5d+'%' : '—'}</div>
+            <div class="horizon-wr">5天預測</div>
+          </div>
+        </div>
+      </div>
+      <div class="model-meta">
+        <span class="model-tag">🤖 XGBoost v8.0</span>
+        \${perf2.sharpe != null ? \`<span class="model-tag">⚡ Sharpe: \${perf2.sharpe}</span>\` : ''}
+        \${perf2.win_rate != null ? \`<span class="model-tag">🏆 勝率: \${perf2.win_rate}%</span>\` : ''}
+        \${perf2.max_dd != null ? \`<span class="model-tag">📉 最大回撤: \${perf2.max_dd}%</span>\` : ''}
+        <span class="model-tag">✅ \${statVal}</span>
+      </div>
+      <div style="font-size:13px;color:var(--sub);margin-top:12px;padding:10px 12px;background:#f7fafc;border-radius:8px">
+        ⚠️ <strong>免責聲明：</strong>XGBoost 機率為統計模型輸出，基於歷史數據訓練，不保證未來表現。
+      </div>\`;
   }
 })();
 </script>
