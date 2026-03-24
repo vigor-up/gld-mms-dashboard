@@ -52,7 +52,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "沒有數據變更"
           else
-            git commit -m "v5.0 Lambda XGBoost 更新: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            git commit -m "v5.0 Lambda XGBoost 更新: $(TZ=Asia/Taipei date +'%Y-%m-%d %H:%M:%S 台北')"
             git pull --rebase origin main
             git push origin main
           fi
