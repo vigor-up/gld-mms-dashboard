@@ -12,8 +12,7 @@ import json
 import argparse
 import requests
 import boto3
-from datetime import datetime, timezone, timedelta
-TZ_TAIPEI = timezone(timedelta(hours=8))
+from datetime import datetime
 import yfinance as yf
 from fredapi import Fred
 import pandas as pd
@@ -22,20 +21,11 @@ import os
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
-        import math
         if isinstance(obj, (np.bool_, bool)): return bool(obj)
-        if isinstance(obj, (np.integer,)): return int(obj)
-        if isinstance(obj, (np.floating,)):
-            v = float(obj)
-            return None if math.isnan(v) or math.isinf(v) else v
-        if isinstance(obj, float):
-            return None if math.isnan(obj) or math.isinf(obj) else obj
+        if isinstance(obj, (np.int64, np.int32, int)): return int(obj)
+        if isinstance(obj, (np.float64, np.float32, float)): return float(obj)
         if hasattr(obj, 'isoformat'): return obj.isoformat()
-        if hasattr(obj, 'item'): return obj.item()  # numpy scalar
-        try:
-            return super(NumpyEncoder, self).default(obj)
-        except TypeError:
-            return str(obj)
+        return super(NumpyEncoder, self).default(obj)
 
 class GldMmsUpdater:
     def __init__(self, fred_api_key=None, bark_keys=None,
@@ -108,21 +98,11 @@ class GldMmsUpdater:
         print(f"[INFO] 獲取 {asset_name} ({ticker})...")
         try:
             df = yf.download(ticker, period=period, interval=interval, progress=False)
-            print(f"[DEBUG] {ticker} raw shape={df.shape}, cols={list(df.columns)[:5]}")
             df = self._clean_df(df)
-            print(f"[DEBUG] {ticker} clean cols={list(df.columns)[:8]}, empty={df.empty}")
-            if df.empty:
-                print(f"[WARN] {ticker} dataframe empty after clean")
-                return False
+            if df.empty: return False
             df.reset_index(inplace=True)
-            print(f"[DEBUG] {ticker} after reset_index cols={list(df.columns)[:5]}")
             time_col = 'datetime' if 'datetime' in df.columns else df.columns[0]
-            print(f"[DEBUG] {ticker} time_col={time_col}")
-            # 轉台北時間顯示
-            _dt = pd.to_datetime(df[time_col])
-            if _dt.dt.tz is None:
-                _dt = _dt.dt.tz_localize('UTC')
-            df['date_full'] = _dt.dt.tz_convert('Asia/Taipei').dt.strftime('%Y-%m-%d %H:%M')
+            df['date_full'] = pd.to_datetime(df[time_col]).dt.strftime('%Y-%m-%d %H:%M')
             if 'adj close' in df.columns: df['close'] = df['adj close']
 
             # OBV
@@ -143,14 +123,10 @@ class GldMmsUpdater:
             df['bear_div'] = (df['close'] > df['close'].shift(3)) & (df['obv'] < df['obv'].shift(3))
             df['is_pin_bar'] = self._detect_pin_bar(df).astype(bool)
 
-            records = df.tail(100).to_dict('records')
-            print(f"[DEBUG] {ticker} records count={len(records)}, sample_keys={list(records[-1].keys())[:5] if records else '—'}")
-            self.assets[ticker] = records
+            self.assets[ticker] = df.tail(100).to_dict('records')
             return True
         except Exception as e:
-            import traceback
             print(f"[ERROR] {ticker} 失敗: {e}")
-            traceback.print_exc()
             return False
 
     def fetch_macro_data(self):
@@ -296,7 +272,7 @@ class GldMmsUpdater:
     # ── Step 6: 更新 HTML ──────────────────────────────────────
     def update_html(self, html_file):
         data = {
-            'timestamp': datetime.now(tz=TZ_TAIPEI).isoformat(),
+            'timestamp': datetime.now().isoformat(),
             'assets': self.assets,
             'macro': self.macro,
             'signals': self.calculate_signals(),
@@ -315,19 +291,13 @@ class GldMmsUpdater:
         start_idx = content.find(start_marker)
         end_idx = content.find(end_marker, start_idx)
         if start_idx != -1 and end_idx != -1:
-            try:
-                data_json = json.dumps(data, cls=NumpyEncoder, ensure_ascii=False)
-            except Exception as e:
-                print(f"[ERROR] json.dumps 失敗: {e}")
-                import traceback; traceback.print_exc()
-                return
+            data_json = json.dumps(data, cls=NumpyEncoder)
             new_content = (content[:start_idx]
                 + f'{start_marker}const AUTO_DATA = {data_json};{end_marker}'
                 + content[end_idx + len(end_marker):])
             with open(html_file, 'w', encoding='utf-8') as f:
                 f.write(new_content)
             print(f"[SUCCESS] v5.0 Lambda XGBoost 整合版資料已更新")
-            print(f"[INFO] assets={list(data['assets'].keys())}, signals={list(data['signals'].keys())}")
 
 def main():
     parser = argparse.ArgumentParser()
