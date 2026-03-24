@@ -21,11 +21,20 @@ import os
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, (np.bool_, bool)): return bool(obj)
-        if isinstance(obj, (np.int64, np.int32, int)): return int(obj)
-        if isinstance(obj, (np.float64, np.float32, float)): return float(obj)
+        import math
+        if isinstance(obj, (np.bool_,)): return bool(obj)
+        if isinstance(obj, (np.integer,)): return int(obj)
+        if isinstance(obj, (np.floating,)):
+            v = float(obj)
+            return None if (math.isnan(v) or math.isinf(v)) else v
+        if isinstance(obj, float):
+            return None if (math.isnan(obj) or math.isinf(obj)) else obj
         if hasattr(obj, 'isoformat'): return obj.isoformat()
-        return super(NumpyEncoder, self).default(obj)
+        if hasattr(obj, 'item'): return obj.item()
+        try:
+            return super(NumpyEncoder, self).default(obj)
+        except TypeError:
+            return str(obj)
 
 class GldMmsUpdater:
     def __init__(self, fred_api_key=None, bark_keys=None,
@@ -291,13 +300,20 @@ class GldMmsUpdater:
         start_idx = content.find(start_marker)
         end_idx = content.find(end_marker, start_idx)
         if start_idx != -1 and end_idx != -1:
-            data_json = json.dumps(data, cls=NumpyEncoder)
+            try:
+                data_json = json.dumps(data, cls=NumpyEncoder, ensure_ascii=False)
+            except Exception as e:
+                print(f"[ERROR] json.dumps 失敗: {e}")
+                import traceback; traceback.print_exc()
+                return
             new_content = (content[:start_idx]
                 + f'{start_marker}const AUTO_DATA = {data_json};{end_marker}'
                 + content[end_idx + len(end_marker):])
             with open(html_file, 'w', encoding='utf-8') as f:
                 f.write(new_content)
-            print(f"[SUCCESS] v5.0 Lambda XGBoost 整合版資料已更新")
+            a_keys = list(data.get('assets',{}).keys())
+            s_keys = list(data.get('signals',{}).keys())
+            print(f"[SUCCESS] v5.0 Lambda XGBoost 整合版資料已更新 | assets={a_keys} signals={s_keys}")
 
 def main():
     parser = argparse.ArgumentParser()
