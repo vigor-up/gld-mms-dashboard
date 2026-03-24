@@ -53,7 +53,7 @@ class GldMmsUpdater:
         df = df.copy()
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-        df.columns = [str(col).lower() for col in df.columns]
+        df.columns = [str(col).lower().strip() for col in df.columns]
         return df
 
     def _detect_pin_bar(self, df):
