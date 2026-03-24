@@ -402,10 +402,10 @@
   // Update time
   const timeEl = document.getElementById('update-time');
   if (ts) {
-    // 補上 'Z' 確保 JavaScript 將時間戳視為 UTC，再轉台北時間
-    const utcTs = ts.endsWith('Z') ? ts : ts + 'Z';
-    const d = new Date(utcTs);
-    timeEl.textContent = '最後更新：' + d.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '（台北）';
+    // timestamp 已含 +08:00 台北時間
+    const d = new Date(ts);
+    const pad = n => String(n).padStart(2,'0');
+    timeEl.textContent = '最後更新：' + d.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '（台北時間）';
   } else {
     timeEl.textContent = '等待資料...';
   }
