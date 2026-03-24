@@ -600,6 +600,33 @@
         </div>
       </div>`;
     }
+    } else if (lam.score !== undefined) {
+      // Lambda score 存在但沒有 model 詳細資料 → 用 performance 顯示
+      const sc = lam.score;
+      const sig = lam.signal || '—';
+      const wr1d = perf.cv_win_rate_1d;
+      const wr5d = perf.cv_win_rate_5d;
+      const scCls = sc >= 60 ? 'bull' : sc <= 40 ? 'bear' : 'neutral';
+      horizonsHtml = `<div style="margin-bottom:16px">
+        <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">🤖 XGBoost AI 模型評分</div>
+        <div class="horizons-grid">
+          <div class="horizon-item">
+            <div class="horizon-label">模型分數</div>
+            <div class="horizon-prob ${scCls}">${sc}</div>
+            <div class="horizon-wr">${sig}</div>
+          </div>
+          <div class="horizon-item">
+            <div class="horizon-label">CV勝率 (1D)</div>
+            <div class="horizon-prob ${wr1d >= 60 ? 'bull' : wr1d <= 40 ? 'bear' : 'neutral'}">${wr1d != null ? wr1d+'%' : '—'}</div>
+            <div class="horizon-wr">隔日預測</div>
+          </div>
+          <div class="horizon-item">
+            <div class="horizon-label">CV勝率 (5D)</div>
+            <div class="horizon-prob ${wr5d >= 60 ? 'bull' : wr5d <= 40 ? 'bear' : 'neutral'}">${wr5d != null ? wr5d+'%' : '—'}</div>
+            <div class="horizon-wr">5天預測</div>
+          </div>
+        </div>
+      </div>`;
     mcEl.innerHTML = `
       ${horizonsHtml}
       ${topFeats.length ? `
