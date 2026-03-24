@@ -301,7 +301,7 @@ class GldMmsUpdater:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--html', default='docs/index.html')
+    parser.add_argument('--html', default='stock-frontend/index.html')
     parser.add_argument('--fred-key', default=None)
     parser.add_argument('--bark-key-1', default=None)
     parser.add_argument('--bark-key-2', default=None)
