@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>黃金現貨 & 期貨預測系統</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'PingFang TC', 'Noto Sans TC', sans-serif;
+      font-size: 16px;
+      background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #16213e 100%);
+      min-height: 100vh;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+    header { text-align: center; margin-bottom: 32px; }
+    header h1 { font-size: 2rem; font-weight: 700; color: #ffd700; letter-spacing: 2px; text-shadow: 0 0 20px rgba(255,215,0,0.4); }
+    header p { font-size: 0.9rem; color: #888; margin-top: 6px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; width: 100%; max-width: 1100px; }
+    .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,215,0,0.15); border-radius: 16px; padding: 24px; backdrop-filter: blur(10px); transition: transform 0.2s, box-shadow 0.2s; }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 8px 30px rgba(255,215,0,0.1); }
+    .card h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; color: #888; margin-bottom: 14px; }
+    .signal-card { grid-column: 1 / -1; text-align: center; padding: 36px 24px; }
+    .signal-emoji { font-size: 3.5rem; margin-bottom: 12px; display: block; }
+    .signal-text { font-size: 2.2rem; font-weight: 700; color: #ffd700; margin-bottom: 8px; }
+    .score-value { font-size: 3.5rem; font-weight: 800; line-height: 1; }
+    .score-label { font-size: 0.9rem; color: #888; margin-top: 6px; }
+    .progress-bar { background: rgba(255,255,255,0.1); border-radius: 999px; height: 12px; margin-top: 12px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ff6b6b, #ffd700, #51cf66); transition: width 1s ease; }
+    .stat-value { font-size: 2.2rem; font-weight: 700; color: #fff; }
+    .stat-unit { font-size: 0.9rem; color: #888; }
+    .prob-up { color: #51cf66; font-weight: 700; }
+    .prob-dn { color: #ff6b6b; font-weight: 700; }
+    .horizon-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    .horizon-table th { font-size: 0.78rem; color: #888; text-align: left; padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .horizon-table td { font-size: 0.95rem; padding: 6px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .feature-row { margin: 6px 0; }
+    .feature-name { font-size: 0.9rem; color: #ccc; margin-bottom: 3px; }
+    .feature-bar-bg { background: rgba(255,255,255,0.08); border-radius: 999px; height: 8px; overflow: hidden; }
+    .feature-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ffd700, #ff9f43); }
+    .feature-pct { font-size: 0.8rem; color: #888; margin-top: 2px; }
+    .perf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+    .perf-item { text-align: center; }
+    .perf-num { font-size: 1.5rem; font-weight: 700; }
+    .perf-label { font-size: 0.78rem; color: #888; margin-top: 2px; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.8rem; background: rgba(81,207,102,0.15); color: #51cf66; border: 1px solid rgba(81,207,102,0.3); margin-top: 10px; }
+    .timestamp { font-size: 0.82rem; color: #666; margin-top: 10px; }
+    .loading { text-align: center; padding: 60px 0; color: #888; }
+    .spinner { width: 40px; height: 40px; border: 3px solid rgba(255,215,0,0.2); border-top-color: #ffd700; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-card { text-align: center; color: #ff6b6b; padding: 40px; }
+    footer { margin-top: 40px; font-size: 0.8rem; color: #444; text-align: center; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>🥇 黃金預測系統</h1>
+  <p>GLD-MMS · XGBoost 模型 · 資料來源 Yahoo Finance</p>
+</header>
+<div id="app">
+  <div class="loading"><div class="spinner"></div><p>載入預測資料中...</p></div>
+</div>
+<footer><p>本系統僅供參考，不構成投資建議。資料每日自動更新。</p></footer>
+<script>
+  const S3_DATA_URL = 'https://gld-mms-data-richtrong.s3.amazonaws.com/data.json';
+  async function loadData() {
+    const app = document.getElementById('app');
+    try {
+      const res = await fetch(S3_DATA_URL + '?t=' + Date.now());
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      render(d);
+    } catch(e) {
+      app.innerHTML = '<div class="card error-card"><p>⚠️ 無法載入資料</p><p style="font-size:0.85rem;margin-top:8px;color:#888">'+e.message+'</p></div>';
+    }
+  }
+  function signalEmoji(s) {
+    if (!s) return '⏳';
+    if (s.includes('強力買進')) return '🚀';
+    if (s.includes('買進')) return '📈';
+    if (s.includes('賣出') || s.includes('📉')) return '📉';
+    return '⏳';
+  }
+  function scoreColor(v) {
+    if (v >= 70) return '#51cf66';
+    if (v >= 55) return '#ffd700';
+    if (v <= 35) return '#ff6b6b';
+    return '#aaa';
+  }
+  function fp(v) { return v != null ? v.toFixed(1)+'%' : '--'; }
+  function render(d) {
+    const app = document.getElementById('app');
+    const score = d.score ?? 0;
+    const color = scoreColor(score);
+    const signal = d.signal || '--';
+    const ts = d.timestamp ? new Date(d.timestamp).toLocaleString('zh-TW') : '--';
+    const h = d.model?.horizons || {};
+    const h1=h['1d']||{}, h5=h['5d']||{}, h30=h['30d']||{};
+    const tf = (d.model?.top_features||[]).slice(0,5);
+    const pf = d.performance || {};
+    const sm = d.smart_money || {};
+    const mi = d.model || {};
+    app.innerHTML = `
+      <div class="grid">
+        <div class="card signal-card">
+          <span class="signal-emoji">${signalEmoji(signal)}</span>
+          <div class="signal-text">${signal}</div>
+          <div style="display:flex;justify-content:center;gap:40px;margin-top:16px;">
+            <div style="text-align:center"><div style="font-size:0.85rem;color:#888">上漲機率</div><div class="prob-up" style="font-size:2rem">${fp(d.prob_up)}</div></div>
+            <div style="text-align:center"><div style="font-size:0.85rem;color:#888">下跌機率</div><div class="prob-dn" style="font-size:2rem">${fp(d.prob_dn)}</div></div>
+          </div>
+          <div class="timestamp">更新時間：${ts}</div>
+        </div>
+        <div class="card">
+          <h3>📊 AI 信心評分</h3>
+          <div class="score-value" style="color:${color}">${score}</div>
+          <div class="score-label">滿分 100 分</div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${score}%"></div></div>
+          <div style="margin-top:12px"><span class="status-badge">${d.status||'XGBoost'}</span></div>
+        </div>
+        <div class="card">
+          <h3>🥇 黃金現價（USD/oz）</h3>
+          <div class="stat-value">$${d.gold?.price??'--'}<span class="stat-unit"> USD</span></div>
+          <div style="margin-top:16px;font-size:0.95rem">
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.07)"><span style="color:#888">ETF 流向</span><span style="color:#ffd700">${sm.etf_flow||'--'}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="color:#888">ETF 比率</span><span>${sm.etf_ratio??'--'}</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>⏱ 多時框預測</h3>
+          <table class="horizon-table">
+            <tr><th>時框</th><th>上漲機率</th><th>CV 勝率</th></tr>
+            <tr><td>1 日</td><td class="${(h1.prob_up??0)>=50?'prob-up':'prob-dn'}">${fp(h1.prob_up)}</td><td>${fp(h1.cv_win_rate)}</td></tr>
+            <tr><td>5 日</td><td class="${(h5.prob_up??0)>=50?'prob-up':'prob-dn'}">${fp(h5.prob_up)}</td><td>${fp(h5.cv_win_rate)}</td></tr>
+            <tr><td>30 日</td><td>${h30.prob_up!=null?fp(h30.prob_up):'待接入'}</td><td>${h30.cv_win_rate!=null?fp(h30.cv_win_rate):'--'}</td></tr>
+          </table>
+          <div style="margin-top:12px;font-size:0.82rem;color:#666">
+            ${mi.type||'XGBoost'} · 特徵：${mi.features??'--'} · 樣本：${mi.train_samples??'--'}
+          </div>
+        </div>
+        <div class="card">
+          <h3>🔍 Top 5 特徵重要性</h3>
+          ${tf.map(f=>`<div class="feature-row"><div class="feature-name">${f.name}</div><div class="feature-bar-bg"><div class="feature-bar-fill" style="width:${f.importance}%"></div></div><div class="feature-pct">${f.importance.toFixed(1)}%</div></div>`).join('')||'<p style="color:#888;font-size:0.9rem">無資料</p>'}
+        </div>
+        <div class="card">
+          <h3>📈 模型績效</h3>
+          <div class="perf-grid">
+            <div class="perf-item"><div class="perf-num" style="color:${(pf.sharpe??0)>=0?'#51cf66':'#ff6b6b'}">${pf.sharpe!=null?pf.sharpe.toFixed(2):'--'}</div><div class="perf-label">Sharpe 比率</div></div>
+            <div class="perf-item"><div class="perf-num" style="color:#ffd700">${pf.win_rate!=null?pf.win_rate.toFixed(1)+'%':'--'}</div><div class="perf-label">歷史勝率</div></div>
+            <div class="perf-item"><div class="perf-num" style="color:#ff6b6b">${pf.max_dd!=null?pf.max_dd.toFixed(1)+'%':'--'}</div><div class="perf-label">最大回撤</div></div>
+            <div class="perf-item"><div class="perf-num" style="color:#51cf66">${pf.cv_win_rate_5d!=null?pf.cv_win_rate_5d.toFixed(1)+'%':'--'}</div><div class="perf-label">5日 CV 勝率</div></div>
+          </div>
+          <div style="margin-top:10px;font-size:0.82rem;color:#666">1日 CV 勝率：${pf.cv_win_rate_1d!=null?pf.cv_win_rate_1d.toFixed(1)+'%':'--'}</div>
+        </div>
+      </div>`;
+  }
+  loadData();
+  setInterval(loadData, 5*60*1000);
+</script>
+</body>
+</html>
