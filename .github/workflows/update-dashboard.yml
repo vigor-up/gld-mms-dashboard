@@ -1,0 +1,57 @@
+name: GLD-MMS 24H Lambda XGBoost 版 (v5.0)
+
+on:
+  schedule:
+    - cron: '*/5 * * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  update-dashboard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: 檢出代碼
+        uses: actions/checkout@v4
+
+      - name: 設置 Python 環境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安裝依賴
+        run: |
+          python -m pip install --upgrade pip
+          pip install yfinance fredapi pandas numpy requests boto3
+
+      - name: 執行 Lambda XGBoost 整合更新
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          BARK_KEY_1: ${{ secrets.BARK_KEY_1 }}
+          BARK_KEY_2: ${{ secrets.BARK_KEY_2 }}
+          BARK_KEY_3: ${{ secrets.BARK_KEY_3 }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          python update_gld_data.py \
+            --html docs/index.html \
+            --fred-key "${FRED_API_KEY:-}" \
+            --bark-key-1 "${BARK_KEY_1:-}" \
+            --bark-key-2 "${BARK_KEY_2:-}" \
+            --bark-key-3 "${BARK_KEY_3:-}" \
+            --aws-access-key "${AWS_ACCESS_KEY_ID:-}" \
+            --aws-secret-key "${AWS_SECRET_ACCESS_KEY:-}" \
+            --aws-region "ap-northeast-1"
+
+      - name: 提交並推送變更
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docs/index.html
+          if git diff --staged --quiet; then
+            echo "沒有數據變更"
+          else
+            git commit -m "v5.0 Lambda XGBoost 更新: $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+            git push origin main
+          fi
