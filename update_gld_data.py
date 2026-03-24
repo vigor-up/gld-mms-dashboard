@@ -103,7 +103,11 @@ class GldMmsUpdater:
             if df.empty: return False
             df.reset_index(inplace=True)
             time_col = 'datetime' if 'datetime' in df.columns else df.columns[0]
-            df['date_full'] = (pd.to_datetime(df[time_col]).dt.tz_localize('UTC').dt.tz_convert('Asia/Taipei')).dt.strftime('%Y-%m-%d %H:%M')
+            # 轉台北時間顯示
+            _dt = pd.to_datetime(df[time_col])
+            if _dt.dt.tz is None:
+                _dt = _dt.dt.tz_localize('UTC')
+            df['date_full'] = _dt.dt.tz_convert('Asia/Taipei').dt.strftime('%Y-%m-%d %H:%M')
             if 'adj close' in df.columns: df['close'] = df['adj close']
 
             # OBV
