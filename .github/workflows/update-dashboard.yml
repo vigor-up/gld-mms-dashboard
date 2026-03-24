@@ -35,7 +35,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
           python update_gld_data.py \
-            --html docs/index.html \
+            --html stock-frontend/index.html \
             --fred-key "${FRED_API_KEY:-}" \
             --bark-key-1 "${BARK_KEY_1:-}" \
             --bark-key-2 "${BARK_KEY_2:-}" \
@@ -48,7 +48,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add docs/index.html
+          git add stock-frontend/index.html
           if git diff --staged --quiet; then
             echo "沒有數據變更"
           else
