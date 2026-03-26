@@ -18,23 +18,21 @@ from fredapi import Fred
 import pandas as pd
 import numpy as np
 import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from cot_module import get_gold_cot, get_silver_cot
+    _COT_AVAILABLE = True
+except Exception:
+    _COT_AVAILABLE = False
 
 class NumpyEncoder(json.JSONEncoder):
     def default(self, obj):
-        import math
-        if isinstance(obj, (np.bool_,)): return bool(obj)
-        if isinstance(obj, (np.integer,)): return int(obj)
-        if isinstance(obj, (np.floating,)):
-            v = float(obj)
-            return None if (math.isnan(v) or math.isinf(v)) else v
-        if isinstance(obj, float):
-            return None if (math.isnan(obj) or math.isinf(obj)) else obj
+        if isinstance(obj, (np.bool_, bool)): return bool(obj)
+        if isinstance(obj, (np.int64, np.int32, int)): return int(obj)
+        if isinstance(obj, (np.float64, np.float32, float)): return float(obj)
         if hasattr(obj, 'isoformat'): return obj.isoformat()
-        if hasattr(obj, 'item'): return obj.item()
-        try:
-            return super(NumpyEncoder, self).default(obj)
-        except TypeError:
-            return str(obj)
+        return super(NumpyEncoder, self).default(obj)
 
 class GldMmsUpdater:
     def __init__(self, fred_api_key=None, bark_keys=None,
@@ -62,7 +60,7 @@ class GldMmsUpdater:
         df = df.copy()
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
-        df.columns = [str(col).lower().strip() for col in df.columns]
+        df.columns = [str(col).lower() for col in df.columns]
         return df
 
     def _detect_pin_bar(self, df):
@@ -148,8 +146,20 @@ class GldMmsUpdater:
                 uup.reset_index(inplace=True)
                 uup['date'] = pd.to_datetime(uup['date']).dt.strftime('%Y-%m-%d')
                 self.macro['dxy'] = uup.tail(30).to_dict('records')
-            return True
-        except: return False
+        except: pass
+
+        # COT 報告
+        if _COT_AVAILABLE:
+            try:
+                print("[INFO] 獲取 CFTC COT 報告...")
+                self.macro['cot_gold']  = get_gold_cot()
+                self.macro['cot_silver'] = get_silver_cot()
+                gold_cot = self.macro['cot_gold']
+                print(f"[SUCCESS] COT 黃金: {gold_cot.get('summary','')}")
+            except Exception as e:
+                print(f"[WARN] COT 獲取失敗: {e}")
+                self.macro['cot_gold'] = {"error": str(e)}
+        return True
 
     # ── Step 3: 推播 ──────────────────────────────────────────
     def send_push(self, title, content, is_leading=False):
@@ -253,7 +263,11 @@ class GldMmsUpdater:
                     'reason': reason
                 },
                 'radar': radar,
-                'smart_money': smart_money,
+                'smart_money': {
+                    **smart_money,
+                    'cot_report': self.macro.get('cot_gold', {}).get('summary', '待更新'),
+                    'cot_detail': self.macro.get('cot_gold', {}),
+                },
                 'performance': performance,
                 'price': float(round(latest['close'], 2)),
                 'vwap_dev': float(round(latest.get('vwap_dev', 0), 2)),
@@ -281,7 +295,7 @@ class GldMmsUpdater:
     # ── Step 6: 更新 HTML ──────────────────────────────────────
     def update_html(self, html_file):
         data = {
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.utcnow().isoformat() + 'Z',  # 明確標示 UTC
             'assets': self.assets,
             'macro': self.macro,
             'signals': self.calculate_signals(),
@@ -289,11 +303,11 @@ class GldMmsUpdater:
                 'score': self.lambda_result.get('score'),
                 'signal': self.lambda_result.get('signal'),
                 'status': self.lambda_result.get('status', '未連線'),
+                'smart_money': self.lambda_result.get('smart_money', {}),
+                'performance': self.lambda_result.get('performance', {}),
+                'model': self.lambda_result.get('model', {}),
                 'prob_up': self.lambda_result.get('prob_up'),
                 'prob_dn': self.lambda_result.get('prob_dn'),
-                'model': self.lambda_result.get('model', {}),
-                'smart_money': self.lambda_result.get('smart_money', {}),
-                'performance': self.lambda_result.get('performance', {})
             }
         }
         with open(html_file, 'r', encoding='utf-8') as f:
@@ -303,20 +317,13 @@ class GldMmsUpdater:
         start_idx = content.find(start_marker)
         end_idx = content.find(end_marker, start_idx)
         if start_idx != -1 and end_idx != -1:
-            try:
-                data_json = json.dumps(data, cls=NumpyEncoder, ensure_ascii=False)
-            except Exception as e:
-                print(f"[ERROR] json.dumps 失敗: {e}")
-                import traceback; traceback.print_exc()
-                return
+            data_json = json.dumps(data, cls=NumpyEncoder)
             new_content = (content[:start_idx]
                 + f'{start_marker}const AUTO_DATA = {data_json};{end_marker}'
                 + content[end_idx + len(end_marker):])
             with open(html_file, 'w', encoding='utf-8') as f:
                 f.write(new_content)
-            a_keys = list(data.get('assets',{}).keys())
-            s_keys = list(data.get('signals',{}).keys())
-            print(f"[SUCCESS] v5.0 Lambda XGBoost 整合版資料已更新 | assets={a_keys} signals={s_keys}")
+            print(f"[SUCCESS] v5.0 Lambda XGBoost 整合版資料已更新")
 
 def main():
     parser = argparse.ArgumentParser()
