@@ -2,7 +2,7 @@ name: GLD-MMS 24H Lambda XGBoost 版 (v5.0)
 
 on:
   schedule:
-    - cron: '*/5 * * * 1-5'
+    # - cron: "*/5 * * * 1-5"  # 已改由 Lightsail cron 每15分鐘更新，更準時
   workflow_dispatch:
 
 jobs:
