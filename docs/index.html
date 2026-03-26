@@ -641,6 +641,60 @@
         <span class="model-tag">📈 ETF: ${smartMoney.etf_flow || '—'}</span>
         ${perf.sharpe ? `<span class="model-tag">⚡ Sharpe: ${perf.sharpe}</span>` : ''}
       </div>
+
+      <!-- ── 新增：COT / VIX / DXY / 季節性 顯示區 ── -->
+      ${(() => {
+        const cot = smartMoney.cot_detail || {};
+        const lam = data.lambda || {};
+        const macro = data.macro || {};
+        const cotGold = macro.cot_gold || cot;
+        const modelStatus = lam.status || '';
+        const hasVix = modelStatus.includes('VIX');
+        const hasDxy = modelStatus.includes('DXY');
+        const hasSeasonal = modelStatus.includes('Seasonal');
+
+        // COT 區塊
+        const cotHtml = cotGold.spec_net_pct != null ? `
+        <div style="margin-top:14px;padding:12px 14px;background:#f0fff4;border:1.5px solid #c6f6d5;border-radius:12px">
+          <div style="font-size:13px;font-weight:700;color:#22543d;margin-bottom:8px">
+            📋 CFTC COT 大戶持倉 <span style="font-weight:400;color:#718096;font-size:11px">（每週五更新，反映週二數據）</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:12px">
+            <div style="background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #c6f6d5">
+              <div style="color:#718096;margin-bottom:2px">投機淨多率</div>
+              <div style="font-size:18px;font-weight:800;color:${cotGold.spec_net_pct > 15 ? '#22863a' : cotGold.spec_net_pct < 5 ? '#c53030' : '#b7791f'}">${cotGold.spec_net_pct}% <span style="font-size:11px;font-weight:400">OI</span></div>
+            </div>
+            <div style="background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #c6f6d5">
+              <div style="color:#718096;margin-bottom:2px">多空比</div>
+              <div style="font-size:18px;font-weight:800;color:#2b6cb0">${cotGold.spec_ls_ratio}x</div>
+            </div>
+            <div style="background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #c6f6d5">
+              <div style="color:#718096;margin-bottom:2px">大戶信號</div>
+              <div style="font-size:14px;font-weight:700">${cotGold.signal || '—'}</div>
+            </div>
+          </div>
+          <div style="margin-top:8px;font-size:12px;color:#4a5568">
+            週趨勢：<strong>${cotGold.trend || '—'}</strong> ｜
+            未平倉：${cotGold.open_interest ? cotGold.open_interest.toLocaleString() : '—'} ｜
+            報告日：${cotGold.date || '—'}
+          </div>
+        </div>` : '';
+
+        // 模型新特徵標籤
+        const newFeatsHtml = (hasVix || hasDxy || hasSeasonal) ? `
+        <div style="margin-top:10px">
+          <div style="font-size:12px;color:#718096;margin-bottom:6px;font-weight:600">🧠 模型已整合新因子：</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${hasVix ? '<span style="background:#fff5f5;border:1px solid #fed7d7;color:#c53030;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">😱 VIX 恐慌指數</span>' : ''}
+            ${hasDxy ? '<span style="background:#ebf8ff;border:1px solid #bee3f8;color:#2b6cb0;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">💵 DXY 美元走勢</span>' : ''}
+            ${hasSeasonal ? '<span style="background:#fffff0;border:1px solid #fefcbf;color:#b7791f;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">📅 季節性因子</span>' : ''}
+            <span style="background:#f0fff4;border:1px solid #c6f6d5;color:#22543d;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">📋 CFTC COT 持倉</span>
+          </div>
+        </div>` : '';
+
+        return cotHtml + newFeatsHtml;
+      })()}
+
       <div style="font-size:13px;color:var(--sub);margin-top:12px;padding:10px 12px;background:#f7fafc;border-radius:8px">
         ⚠️ <strong>免責聲明：</strong>XGBoost 機率為統計模型輸出，基於歷史數據訓練，不保證未來表現。漲跌機率 ≥ 72% 才觸發推播。
       </div>`;
