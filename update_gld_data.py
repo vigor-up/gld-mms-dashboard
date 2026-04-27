@@ -650,6 +650,27 @@ class GldMmsUpdaterV6:
         cot_net  = cot.get('spec_net_pct', 0)
         cot_ls   = cot.get('spec_ls_ratio', 1.0)
 
+        # ── Fallback：若 assets 為空（yfinance 失敗），用 Lambda 結果產生基本信號 ──
+        if not self.assets and lb_score is not None:
+            price = self.lb_result.get('gold', {}).get('price', 0)
+            combined = round(max(0, min(100, lb_score + cot_bias)))
+            if   combined >= 80: signal = 'STRONG_BUY'
+            elif combined >= 65: signal = 'BUY'
+            elif combined >= 55: signal = 'PRE_BUY'
+            elif combined <= 20: signal = 'STRONG_SELL'
+            elif combined <= 35: signal = 'SELL'
+            else:                signal = 'NEUTRAL'
+            signals['GC=F'] = {
+                'ticker':     'GC=F',
+                'signal':     signal,
+                'confidence': combined,
+                'tech_score': lb_score,
+                'close':      price,
+                'note':       f'Lambda AI {lb_score}% + COT{cot_bias:+.0f}（技術指標暫時不可用）',
+                'cot_score_add': cot_bias,
+            }
+            print(f'[INFO] Fallback 信號: {signal} {combined}%')
+
         for ticker, raw_data in self.assets.items():
             df    = pd.DataFrame(raw_data)
             now   = df.iloc[-1].to_dict()
