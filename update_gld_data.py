@@ -14,7 +14,8 @@ GLD-MMS 系統 v6.0 - Top 10% 預測模型旗艦版
 8. Dynamic Position Sizing — Kelly Criterion / ATR-based
 """
 
-import json, argparse, requests, boto3, os, sys273
+import json, argparse, requests, boto3, os, sys
+from datetime import datetime, timedelta
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -680,8 +681,8 @@ class GldMmsUpdaterV6:
                         f" + 技術{tech['score']}%×35%"
                         f" + COT{cot_bias:+.0f}×10%")
             else:
-                combined = tech['score']
-                note = f"純技術分析 {tech['score']}%"
+                combined = round(max(0, min(100, tech['score'] + cot_bias)))
+                note = f"純技術分析 {tech['score']}% + COT{cot_bias:+.0f}"
                 if ensemble_note:
                     note = ensemble_note + ' | ' + note
 
