@@ -162,6 +162,10 @@ class GldMmsUpdaterV6:
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
         df.columns = [str(c).lower() for c in df.columns]
+        for col in ['open', 'high', 'low', 'close', 'volume']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        df.dropna(subset=['close'], inplace=True)
         return df
 
     # ════════════════════════════════════════════════════════════
@@ -681,8 +685,8 @@ class GldMmsUpdaterV6:
                         f" + 技術{tech['score']}%×35%"
                         f" + COT{cot_bias:+.0f}×10%")
             else:
-                combined = round(max(0, min(100, tech['score'] + cot_bias)))
-                note = f"純技術分析 {tech['score']}% + COT{cot_bias:+.0f}"
+                combined = tech['score']
+                note = f"純技術分析 {tech['score']}%"
                 if ensemble_note:
                     note = ensemble_note + ' | ' + note
 
