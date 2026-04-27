@@ -14,8 +14,7 @@ GLD-MMS 系統 v6.0 - Top 10% 預測模型旗艦版
 8. Dynamic Position Sizing — Kelly Criterion / ATR-based
 """
 
-import json, argparse, requests, boto3, os, sys
-from datetime import datetime, timedelta
+import json, argparse, requests, boto3, os, sys273
 import yfinance as yf
 import pandas as pd
 import numpy as np
