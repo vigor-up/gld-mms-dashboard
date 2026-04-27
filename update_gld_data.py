@@ -163,8 +163,13 @@ class GldMmsUpdaterV6:
             df.columns = [str(c[0]).lower() for c in df.columns]
         else:
             df.columns = [str(c).lower() for c in df.columns]
-        for col in ['open', 'high', 'low', 'close', 'volume']:
+        # 強制所有常見價格/成交量欄位轉為 float（杜絕字串導致技術指標崩潰）
+        for col in ['open', 'high', 'low', 'close', 'volume', 'adj close']:
             if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+        # 再次全面轉換：任何仍是 object 類型的欄位統統轉 float
+        for col in df.columns:
+            if df[col].dtype == 'object':
                 df[col] = pd.to_numeric(df[col], errors='coerce')
         df.dropna(subset=['close'], inplace=True)
         return df
@@ -655,13 +660,47 @@ class GldMmsUpdaterV6:
         print(f'[INFO] Lambda Fallback 信號: {signal} {combined}%')
         return {
             'GC=F': {
-                'ticker':        'GC=F',
-                'signal':        signal,
-                'confidence':    combined,
-                'tech_score':    lb_score,
-                'close':         price,
-                'note':          f'Lambda AI {lb_score}% + COT{cot_bias:+.0f}（技術指標暫時不可用）',
-                'cot_score_add': cot_bias,
+                'ticker':  'GC=F',
+                'short_term': {
+                    'signal':     signal,
+                    'confidence': combined,
+                    'tech_score': lb_score,
+                    'lambda_score': lb_score,
+                    'reason':     f'Lambda AI {lb_score}% + COT{cot_bias:+.0f}（技術指標暫時不可用）',
+                    'regime':     'UNKNOWN',
+                },
+                'feature_vector': {
+                    'rsi': 50.0, 'macd_hist': 0.0, 'bb_pos': 0.5,
+                    'stoch_k': 50.0, 'adx': 0.0, 'cci': 0.0, 'williams_r': -50.0,
+                    'momentum_pct': 0.0, 'vwap_dev': 0.0,
+                    'cot_score_add': cot_bias,
+                    'cot_spec_net_pct': cot_net,
+                    'cot_spec_ls_ratio': cot_ls,
+                    'regime': 'UNKNOWN', 'daily_rsi': None,
+                },
+                'radar': {
+                    'msg':    '技術指標不可用（yfinance 資料格式異常）',
+                    'bull_div': False, 'bear_div': False, 'atr_low': False, 'regime': 'UNKNOWN',
+                },
+                'smart_money': {
+                    **smart_money,
+                    'cot_report':  '待更新（技術指標 Fallback）',
+                    'cot_detail':  cot,
+                },
+                'performance': perf,
+                'position_sizing': {
+                    'atr_risk_pct': 2.0, 'kelly_fraction': 0.5,
+                    'recommended_contracts': 1,
+                },
+                'breakdown':  [
+                    f'AI評分: {lb_score}% ({signal})',
+                    f'COT大戶偏多: {cot_net}% OI (LS比 {cot_ls})',
+                    '體制: UNKNOWN（技術指標不可用）',
+                    f'Kelly倉位: 50% (1合約) | COT+{cot_bias:+.0f}',
+                ],
+                'price':   float(price),
+                'close':   float(price),
+                'vwap_dev': 0.0,
             }
         }
 
