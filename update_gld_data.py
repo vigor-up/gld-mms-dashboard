@@ -635,6 +635,36 @@ class GldMmsUpdaterV6:
     # ════════════════════════════════════════════════════════════
     # Step 8: 綜合評分 + 信號
     # ════════════════════════════════════════════════════════════
+
+    def _lambda_fallback_signal(self) -> dict:
+        """當 assets 為空時，用 Lambda 分數產生 GC=F fallback 信號"""
+        lb_score = self.lb_result.get('score', None)
+        if lb_score is None:
+            return {}
+        cot = self.macro.get('cot_gold', {})
+        cot_bias = cot.get('score_add', 0)
+        combined = round(max(0, min(100, lb_score + cot_bias)))
+        if   combined >= 80: signal = 'STRONG_BUY'
+        elif combined >= 65: signal = 'BUY'
+        elif combined >= 55: signal = 'PRE_BUY'
+        elif combined <= 20: signal = 'STRONG_SELL'
+        elif combined <= 35: signal = 'SELL'
+        elif combined <= 45: signal = 'PRE_SELL'
+        else:                signal = 'NEUTRAL'
+        price = self.lb_result.get('gold', {}).get('price', 0)
+        print(f'[INFO] Lambda Fallback 信號: {signal} {combined}%')
+        return {
+            'GC=F': {
+                'ticker':        'GC=F',
+                'signal':        signal,
+                'confidence':    combined,
+                'tech_score':    lb_score,
+                'close':         price,
+                'note':          f'Lambda AI {lb_score}% + COT{cot_bias:+.0f}（技術指標暫時不可用）',
+                'cot_score_add': cot_bias,
+            }
+        }
+
     def calculate_signals(self):
         PUSH = 78  # 推播門檻
         signals = {}
@@ -831,7 +861,7 @@ class GldMmsUpdaterV6:
             'assets':       self.assets,
             'daily':        self.daily,
             'macro':        self.macro,
-            'signals':      self.calculate_signals(),
+            'signals':      self.calculate_signals() or self._lambda_fallback_signal(),
             'win_rate_20':  win_rate,
             'backtest':     bt_metrics,
             'lambda': {
