@@ -9,6 +9,8 @@ jobs:
     permissions:
       contents: write
 
+    env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: 檢出代碼
         uses: actions/checkout@v4
@@ -58,6 +60,6 @@ jobs:
       - name: 清除 Cloudflare 快取
         run: |
           curl -s -X POST "https://api.cloudflare.com/client/v4/zones/3ceea59661db3f8fddd4b05167627b68/purge_cache" \
-            -H "Authorization: Bearer cfat_NXc3RGCBIhAV91SS1tgdeNYrrGGcYLUxzIha23Tt3b8844b9" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{"purge_everything":true}' | python3 -c "import sys,json; d=json.load(sys.stdin); print('CF Purge:', '✅ 成功' if d.get('success') else '❌ 失敗')"
