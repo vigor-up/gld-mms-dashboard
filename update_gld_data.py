@@ -160,8 +160,9 @@ class GldMmsUpdaterV6:
     def _clean(self, df):
         df = df.copy()
         if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-        df.columns = [str(c).lower() for c in df.columns]
+            df.columns = [str(c[0]).lower() for c in df.columns]
+        else:
+            df.columns = [str(c).lower() for c in df.columns]
         for col in ['open', 'high', 'low', 'close', 'volume']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')
@@ -289,7 +290,7 @@ class GldMmsUpdaterV6:
         print(f"[INFO] 獲取 {name} ({ticker}) [{interval}]...")
         try:
             df = yf.download(ticker, period=period, interval=interval,
-                              progress=False, auto_adjust=True)
+                              progress=False, multi_level_index=False, auto_adjust=True)
             df = self._clean(df)
             if df.empty: return False
             df.reset_index(inplace=True)
@@ -306,7 +307,7 @@ class GldMmsUpdaterV6:
         print(f"[INFO] 獲取日線 {name} ({ticker})...")
         try:
             df = yf.download(ticker, period=period, interval='1d',
-                              progress=False, auto_adjust=True)
+                              progress=False, multi_level_index=False, auto_adjust=True)
             df = self._clean(df)
             if df.empty: return False
             df.reset_index(inplace=True)
@@ -331,7 +332,7 @@ class GldMmsUpdaterV6:
         for sym, name in tickers.items():
             try:
                 df = yf.download(sym, period='30d', interval='1d',
-                                 progress=False, auto_adjust=True)
+                                 progress=False, multi_level_index=False, auto_adjust=True)
                 df = self._clean(df)
                 if not df.empty:
                     df['rsi'] = self._rsi_fast(df['close'], 14)
@@ -356,7 +357,7 @@ class GldMmsUpdaterV6:
         print("[INFO] 獲取宏觀 + COT...")
         # UUP / DXY
         try:
-            df = yf.download('UUP', period='60d', interval='1d', progress=False)
+            df = yf.download('UUP', period='60d', interval='1d', progress=False, multi_level_index=False)
             df = self._clean(df)
             if not df.empty:
                 df['rsi'] = self._rsi_fast(df['close'], 14)
