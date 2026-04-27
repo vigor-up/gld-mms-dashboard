@@ -290,7 +290,7 @@ class GldMmsUpdaterV6:
         print(f"[INFO] 獲取 {name} ({ticker}) [{interval}]...")
         try:
             df = yf.download(ticker, period=period, interval=interval,
-                              progress=False, multi_level_index=False, auto_adjust=True)
+                              progress=False, auto_adjust=True)
             df = self._clean(df)
             if df.empty: return False
             df.reset_index(inplace=True)
@@ -307,7 +307,7 @@ class GldMmsUpdaterV6:
         print(f"[INFO] 獲取日線 {name} ({ticker})...")
         try:
             df = yf.download(ticker, period=period, interval='1d',
-                              progress=False, multi_level_index=False, auto_adjust=True)
+                              progress=False, auto_adjust=True)
             df = self._clean(df)
             if df.empty: return False
             df.reset_index(inplace=True)
@@ -332,7 +332,7 @@ class GldMmsUpdaterV6:
         for sym, name in tickers.items():
             try:
                 df = yf.download(sym, period='30d', interval='1d',
-                                 progress=False, multi_level_index=False, auto_adjust=True)
+                                 progress=False, auto_adjust=True)
                 df = self._clean(df)
                 if not df.empty:
                     df['rsi'] = self._rsi_fast(df['close'], 14)
@@ -357,7 +357,7 @@ class GldMmsUpdaterV6:
         print("[INFO] 獲取宏觀 + COT...")
         # UUP / DXY
         try:
-            df = yf.download('UUP', period='60d', interval='1d', progress=False, multi_level_index=False)
+            df = yf.download('UUP', period='60d', interval='1d', progress=False)
             df = self._clean(df)
             if not df.empty:
                 df['rsi'] = self._rsi_fast(df['close'], 14)
