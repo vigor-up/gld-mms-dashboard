@@ -396,7 +396,7 @@
 (function () {
   const data = (typeof AUTO_DATA !== 'undefined') ? AUTO_DATA : {};
   const signals = data.signals || {};
-  const assets_raw = data.assets || {};
+  const assets_raw = (data.assets && Object.keys(data.assets).length > 0) ? data.assets : (data.signals || {});
   const ts = data.timestamp;
 
   // Update time
@@ -428,7 +428,11 @@
   function confCls(c) { return c >= 80 ? 'high' : c >= 60 ? 'mid' : 'low'; }
 
   function getLatest(ticker) {
-    const rows = assets_raw[ticker];
+    // For signals mode: data is signal object, not OHLCV array
+    const asset = assets_raw[ticker];
+    if (!asset) return null;
+    if (asset.short_term) return asset;  // signals mode
+    const rows = asset;
     return (rows && rows.length) ? rows[rows.length - 1] : null;
   }
 
