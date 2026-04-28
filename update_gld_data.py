@@ -773,64 +773,102 @@ class GldMmsUpdaterV6:
 
         # ── Fallback 2：所有數據都失敗 → 用 yfinance 即時報價 + COT 產生硬編碼評估 ──
         if not signals:
+            print('[INFO] 進入 Fallback 2 應急模式（yfinance 即時報價）')
             try:
-                import yfinance as yf
                 df_yf = yf.download('GC=F', period='5d', interval='1h', progress=False, auto_adjust=True)
-                if not df_yf.empty:
-                    close = float(df_yf['close'].iloc[-1])
-                    prev_close = float(df_yf['close'].iloc[-2]) if len(df_yf) > 1 else close
-                    change_pct = ((close - prev_close) / prev_close * 100) if prev_close else 0
-                    # 簡單趨勢判斷
-                    if   change_pct > 0.5:  simple_signal = 'STRONG_BUY'
-                    elif change_pct > 0.1:  simple_signal = 'BUY'
-                    elif change_pct < -0.5: simple_signal = 'STRONG_SELL'
-                    elif change_pct < -0.1: simple_signal = 'SELL'
-                    else:                   simple_signal = 'NEUTRAL'
-                    base_score = 50 + change_pct * 5 + cot_bias
-                    combined = round(max(0, min(100, base_score)))
-                    signals['GC=F'] = {
-                        'ticker':  'GC=F',
-                        'short_term': {
-                            'signal':     simple_signal,
-                            'confidence': combined,
-                            'tech_score': round(50 + change_pct * 5),
-                            'lambda_score': None,
-                            'reason':     f'yfinance 即時 {close:.1f} ({change_pct:+.2f}%) + COT{cot_bias:+.0f}（應急模式）',
-                            'regime':     'UNKNOWN',
-                        },
-                        'feature_vector': {
-                            'rsi': 50.0, 'macd_hist': 0.0, 'bb_pos': 0.5,
-                            'stoch_k': 50.0, 'adx': 0.0, 'cci': 0.0, 'williams_r': -50.0,
-                            'momentum_pct': change_pct * 10, 'vwap_dev': 0.0,
-                            'cot_score_add': cot_bias,
-                            'cot_spec_net_pct': cot_net,
-                            'cot_spec_ls_ratio': cot_ls,
-                            'regime': 'UNKNOWN', 'daily_rsi': None,
-                        },
-                        'radar': {
-                            'msg': 'yfinance 即時報價應急模式',
-                            'bull_div': False, 'bear_div': False, 'atr_low': False, 'regime': 'UNKNOWN',
-                        },
-                        'smart_money': {
-                            **smart_money,
-                            'cot_report': cot.get('summary', '待更新'),
-                            'cot_detail': cot,
-                        },
-                        'performance': perf,
-                        'position_sizing': {'atr_risk_pct': 2.0, 'kelly_fraction': 0.5, 'recommended_contracts': 1},
-                        'breakdown':  [
-                            f'即時價格: {close:.2f} ({change_pct:+.2f}%)',
-                            f'COT大戶偏多: {cot_net}% OI (LS比 {cot_ls})',
-                            '體制: UNKNOWN（應急模式）',
-                            f'Kelly倉位: 50% (1合約) | COT+{cot_bias:+.0f}',
-                        ],
-                        'price': close,
-                        'close': close,
-                        'vwap_dev': 0.0,
-                    }
-                    print(f'[INFO] 應急 Fallback 信號: {simple_signal} {combined}% (close={close})')
+                if df_yf.empty:
+                    raise ValueError('yfinance 返回空數據')
+                close = float(df_yf['close'].iloc[-1])
+                prev_close = float(df_yf['close'].iloc[-2]) if len(df_yf) > 1 else close
+                change_pct = ((close - prev_close) / prev_close * 100) if prev_close else 0
+                # 簡單趨勢判斷
+                if   change_pct > 0.5:  simple_signal = 'STRONG_BUY'
+                elif change_pct > 0.1:  simple_signal = 'BUY'
+                elif change_pct < -0.5: simple_signal = 'STRONG_SELL'
+                elif change_pct < -0.1: simple_signal = 'SELL'
+                else:                   simple_signal = 'NEUTRAL'
+                base_score = 50 + change_pct * 5 + cot_bias
+                combined = round(max(0, min(100, base_score)))
+                signals['GC=F'] = {
+                    'ticker':  'GC=F',
+                    'short_term': {
+                        'signal':     simple_signal,
+                        'confidence': combined,
+                        'tech_score': round(50 + change_pct * 5),
+                        'lambda_score': None,
+                        'reason':     f'yfinance 即時 {close:.1f} ({change_pct:+.2f}%) + COT{cot_bias:+.0f}（應急模式）',
+                        'regime':     'UNKNOWN',
+                    },
+                    'feature_vector': {
+                        'rsi': 50.0, 'macd_hist': 0.0, 'bb_pos': 0.5,
+                        'stoch_k': 50.0, 'adx': 0.0, 'cci': 0.0, 'williams_r': -50.0,
+                        'momentum_pct': change_pct * 10, 'vwap_dev': 0.0,
+                        'cot_score_add': cot_bias,
+                        'cot_spec_net_pct': cot_net,
+                        'cot_spec_ls_ratio': cot_ls,
+                        'regime': 'UNKNOWN', 'daily_rsi': None,
+                    },
+                    'radar': {
+                        'msg': 'yfinance 即時報價應急模式',
+                        'bull_div': False, 'bear_div': False, 'atr_low': False, 'regime': 'UNKNOWN',
+                    },
+                    'smart_money': {
+                        **smart_money,
+                        'cot_report': cot.get('summary', '待更新'),
+                        'cot_detail': cot,
+                    },
+                    'performance': perf,
+                    'position_sizing': {'atr_risk_pct': 2.0, 'kelly_fraction': 0.5, 'recommended_contracts': 1},
+                    'breakdown':  [
+                        f'即時價格: {close:.2f} ({change_pct:+.2f}%)',
+                        f'COT大戶偏多: {cot_net}% OI (LS比 {cot_ls})',
+                        '體制: UNKNOWN（應急模式）',
+                        f'Kelly倉位: 50% (1合約) | COT+{cot_bias:+.0f}',
+                    ],
+                    'price': close,
+                    'close': close,
+                    'vwap_dev': 0.0,
+                }
+                print(f'[INFO] 應急 Fallback 信號: {simple_signal} {combined}% (close={close})')
+                # 順便抓 SI=F 白銀
+                try:
+                    df_ag = yf.download('SI=F', period='5d', interval='1h', progress=False, auto_adjust=True)
+                    if not df_ag.empty:
+                        close_ag = float(df_ag['close'].iloc[-1])
+                        prev_ag  = float(df_ag['close'].iloc[-2]) if len(df_ag) > 1 else close_ag
+                        chg_ag = ((close_ag - prev_ag) / prev_ag * 100) if prev_ag else 0
+                        if   chg_ag > 0.5:  sig_ag = 'STRONG_BUY'
+                        elif chg_ag > 0.1:  sig_ag = 'BUY'
+                        elif chg_ag < -0.5: sig_ag = 'STRONG_SELL'
+                        elif chg_ag < -0.1: sig_ag = 'SELL'
+                        else:               sig_ag = 'NEUTRAL'
+                        sc_ag = round(max(0, min(100, 50 + chg_ag * 5 + cot_bias)))
+                        signals['SI=F'] = {
+                            'ticker': 'SI=F',
+                            'short_term': {
+                                'signal': sig_ag, 'confidence': sc_ag,
+                                'tech_score': round(50 + chg_ag * 5), 'lambda_score': None,
+                                'reason': f'SI即時 {close_ag:.2f} ({chg_ag:+.2f}%) + COT{cot_bias:+.0f}', 'regime': 'UNKNOWN',
+                            },
+                            'feature_vector': {
+                                'rsi': 50.0, 'macd_hist': 0.0, 'bb_pos': 0.5,
+                                'stoch_k': 50.0, 'adx': 0.0, 'cci': 0.0, 'williams_r': -50.0,
+                                'momentum_pct': chg_ag * 10, 'vwap_dev': 0.0,
+                                'cot_score_add': cot_bias, 'cot_spec_net_pct': 0, 'cot_spec_ls_ratio': 1.0,
+                                'regime': 'UNKNOWN', 'daily_rsi': None,
+                            },
+                            'radar': {'msg': '白銀 yfinance 即時模式', 'bull_div': False, 'bear_div': False, 'atr_low': False, 'regime': 'UNKNOWN'},
+                            'smart_money': {**smart_money, 'cot_report': '待更新', 'cot_detail': {}},
+                            'performance': perf,
+                            'position_sizing': {'atr_risk_pct': 2.0, 'kelly_fraction': 0.5, 'recommended_contracts': 1},
+                            'breakdown':  [f'白銀即時: {close_ag:.2f} ({chg_ag:+.2f}%)', f'COT+{cot_bias:+.0f}（應急）'],
+                            'price': close_ag, 'close': close_ag, 'vwap_dev': 0.0,
+                        }
+                        print(f'[INFO] SI=F 應急信號: {sig_ag} {sc_ag}%')
+                except Exception as e2:
+                    print(f'[WARN] SI=F 抓取失敗: {e2}')
             except Exception as e:
-                print(f'[WARN] 應急 Fallback 也失敗: {e}')
+                print(f'[WARN] 應急 Fallback 完全失敗: {e}')
 
         for ticker, raw_data in self.assets.items():
             df    = pd.DataFrame(raw_data)
