@@ -2,6 +2,8 @@ name: GLD-MMS 24H Lambda XGBoost 版 (v5.0)
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 */4 * * 1-5'   # 每4小時(00:00/04:00/08:00/12:00/16:00/20:00)，週一至週五台北時區
 
 jobs:
   update-dashboard:
