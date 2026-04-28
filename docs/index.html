@@ -3,709 +3,146 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>GLD-MMS 貴金屬預警系統</title>
+<title>SIGNAL // 資產預警系統</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #f5f7fa;
-    --card: #ffffff;
-    --border: #e2e8f0;
-    --text: #1a202c;
-    --sub: #718096;
-    --buy: #22863a;
-    --buy-bg: #f0fff4;
-    --buy-border: #c6f6d5;
-    --sell: #c53030;
-    --sell-bg: #fff5f5;
-    --sell-border: #fed7d7;
-    --hold: #b7791f;
-    --hold-bg: #fffff0;
-    --hold-border: #fefcbf;
-    --pre: #2b6cb0;
-    --pre-bg: #ebf8ff;
-    --pre-border: #bee3f8;
-    --gold: #d69e2e;
-    --silver: #718096;
-    --accent: #2d3748;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    font-size: 18px;
-    line-height: 1.7;
-  }
-
-  /* ── Header ── */
-  .header {
-    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
-    color: #fff;
-    padding: 20px 16px 18px;
-  }
-  .header-inner { max-width: 900px; margin: 0 auto; }
-  .header h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.3px; }
-  .header h1 small { display: block; font-size: 13px; font-weight: 400; opacity: 0.7; margin-top: 3px; }
-  .header-meta { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .update-badge {
-    background: rgba(255,255,255,0.12);
-    border: 1px solid rgba(255,255,255,0.2);
-    border-radius: 20px;
-    padding: 4px 12px;
-    font-size: 12px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .live-dot { width: 7px; height: 7px; background: #48bb78; border-radius: 50%; animation: pulse 2s infinite; flex-shrink: 0; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  .push-badge {
-    background: rgba(72,187,120,0.2);
-    border: 1px solid rgba(72,187,120,0.4);
-    color: #9ae6b4;
-    border-radius: 20px;
-    padding: 4px 12px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  /* ── Layout ── */
-  .container { max-width: 900px; margin: 0 auto; padding: 20px 14px 40px; }
-
-  /* ── Asset Cards ── */
-  .assets-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
-  @media (min-width: 640px) { .assets-grid { grid-template-columns: 1fr 1fr; } }
-  @media (min-width: 900px) { .assets-grid { grid-template-columns: 1fr 1fr 1fr; } }
-
-  .asset-card {
-    background: var(--card);
-    border: 1.5px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  }
-  .card-top {
-    padding: 16px 18px 14px;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
-  }
-  .card-top-left {}
-  .asset-label { font-size: 13px; color: var(--sub); font-weight: 600; letter-spacing: 0.3px; }
-  .asset-price {
-    font-size: 36px;
-    font-weight: 800;
-    letter-spacing: -1px;
-    line-height: 1.1;
-    margin: 4px 0 2px;
-  }
-  .asset-price.gold { color: var(--gold); }
-  .asset-price.silver { color: var(--silver); }
-  .asset-unit { font-size: 11px; color: var(--sub); }
-
-  /* Signal */
-  .signal-wrap { flex-shrink: 0; text-align: right; }
-  .signal-badge {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 9px 18px;
-    border-radius: 24px;
-    font-size: 16px;
-    font-weight: 800;
-    letter-spacing: 0.3px;
-    border: 1.5px solid;
-    white-space: nowrap;
-  }
-  .signal-badge.STRONG_BUY, .signal-badge.BUY { background: var(--buy-bg); color: var(--buy); border-color: var(--buy-border); }
-  .signal-badge.STRONG_SELL, .signal-badge.SELL { background: var(--sell-bg); color: var(--sell); border-color: var(--sell-border); }
-  .signal-badge.HOLD { background: var(--hold-bg); color: var(--hold); border-color: var(--hold-border); }
-  .signal-badge.PRE_BUY { background: var(--pre-bg); color: var(--pre); border-color: var(--pre-border); }
-
-  /* Card body */
-  .card-body { padding: 14px 18px 16px; }
-
-  /* Confidence */
-  .conf-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-  .conf-label { font-size: 12px; color: var(--sub); font-weight: 600; }
-  .conf-num { font-size: 17px; font-weight: 800; }
-  .conf-num.high { color: var(--buy); }
-  .conf-num.mid { color: var(--hold); }
-  .conf-num.low { color: var(--sub); }
-  .conf-track { height: 7px; background: #edf2f7; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
-  .conf-fill { height: 100%; border-radius: 10px; transition: width 0.5s ease; }
-  .conf-fill.high { background: linear-gradient(90deg, #48bb78, #38a169); }
-  .conf-fill.mid { background: linear-gradient(90deg, #ecc94b, #d69e2e); }
-  .conf-fill.low { background: #cbd5e0; }
-  .push-active { font-size: 11px; color: var(--buy); font-weight: 700; }
-
-  /* Reason */
-  .reason-box {
-    background: #f7fafc;
-    border-left: 4px solid #e2e8f0;
-    border-radius: 0 8px 8px 0;
-    padding: 12px 14px;
-    font-size: 15px;
-    color: var(--sub);
-    margin-bottom: 12px;
-    line-height: 1.7;
-  }
-  .reason-box.BUY, .reason-box.STRONG_BUY { border-left-color: #68d391; background: #f0fff4; color: #276749; }
-  .reason-box.SELL, .reason-box.STRONG_SELL { border-left-color: #fc8181; background: #fff5f5; color: #9b2c2c; }
-  .reason-box.PRE_BUY { border-left-color: #63b3ed; background: #ebf8ff; color: #2c5282; }
-
-  /* Indicators */
-  .indicators { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-  .ind {
-    background: #f7fafc;
-    border-radius: 10px;
-    padding: 10px 12px;
-    border: 1px solid var(--border);
-  }
-  .ind-name { font-size: 12px; color: var(--sub); font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 3px; }
-  .ind-val { font-size: 18px; font-weight: 800; }
-  .ind-val.up { color: var(--buy); }
-  .ind-val.down { color: var(--sell); }
-  .ind-val.neutral { color: var(--hold); }
-
-  /* Radar tags */
-  .radar-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-  .rtag {
-    font-size: 11px; font-weight: 600;
-    padding: 3px 10px; border-radius: 12px;
-    border: 1px solid;
-  }
-  .rtag.bull { background: var(--pre-bg); color: var(--pre); border-color: var(--pre-border); }
-  .rtag.bear { background: var(--sell-bg); color: var(--sell); border-color: var(--sell-border); }
-  .rtag.warn { background: var(--hold-bg); color: var(--hold); border-color: var(--hold-border); }
-  .rtag.none { background: #f7fafc; color: var(--sub); border-color: var(--border); }
-
-  /* ── Section title ── */
-  .section-title {
-    font-size: 16px; font-weight: 800; color: var(--accent);
-    margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
-  }
-  .section-title span { flex: 1; height: 1px; background: var(--border); display: block; margin-left: 8px; }
-
-  /* ── AI Model Card ── */
-  .model-card {
-    background: var(--card);
-    border: 1.5px solid var(--border);
-    border-radius: 16px;
-    padding: 20px 18px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  }
-  .horizons-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 18px; }
-  .horizon-item { background: #f7fafc; border-radius: 12px; padding: 14px 12px; border: 1.5px solid var(--border); text-align: center; }
-  .horizon-label { font-size: 12px; color: var(--sub); font-weight: 700; letter-spacing: 0.5px; margin-bottom: 6px; }
-  .horizon-prob { font-size: 26px; font-weight: 800; line-height: 1; }
-  .horizon-prob.bull { color: var(--buy); }
-  .horizon-prob.bear { color: var(--sell); }
-  .horizon-prob.neutral { color: var(--hold); }
-  .horizon-wr { font-size: 13px; color: var(--sub); margin-top: 4px; }
-  .horizon-wr strong { color: var(--text); }
-  .feat-list { list-style: none; }
-  .feat-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .feat-item:last-child { border-bottom: none; }
-  .feat-rank { font-size: 14px; font-weight: 800; color: var(--sub); width: 22px; flex-shrink: 0; }
-  .feat-name { font-size: 15px; font-weight: 600; flex: 1; }
-  .feat-bar-wrap { width: 100px; flex-shrink: 0; }
-  .feat-bar-bg { background: #edf2f7; border-radius: 6px; height: 8px; }
-  .feat-bar-fill { background: linear-gradient(90deg, #4299e1, #2b6cb0); height: 8px; border-radius: 6px; }
-  .feat-pct { font-size: 13px; font-weight: 700; color: var(--pre); width: 40px; text-align: right; flex-shrink: 0; }
-  .model-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
-  .model-tag { background: var(--pre-bg); color: var(--pre); border: 1px solid var(--pre-border); border-radius: 20px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
-  .guide-card {
-    background: var(--card);
-    border: 1.5px solid var(--border);
-    border-radius: 16px;
-    padding: 20px 18px;
-    margin-bottom: 20px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  }
-
-  /* Signal legend */
-  .signal-legend { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; }
-  @media (min-width: 480px) { .signal-legend { grid-template-columns: repeat(3, 1fr); } }
-  @media (min-width: 700px) { .signal-legend { grid-template-columns: repeat(6, 1fr); } }
-  .sl-item {
-    display: flex; flex-direction: column; align-items: center; gap: 5px;
-    padding: 12px 8px; border-radius: 12px; border: 1.5px solid var(--border);
-    text-align: center; background: #f7fafc;
-  }
-  .sl-emoji { font-size: 22px; }
-  .sl-label { font-size: 11px; font-weight: 800; }
-  .sl-label.buy { color: var(--buy); }
-  .sl-label.sell { color: var(--sell); }
-  .sl-label.hold { color: var(--hold); }
-  .sl-label.pre { color: var(--pre); }
-  .sl-desc { font-size: 11px; color: var(--sub); }
-
-  /* Indicator guide */
-  .ind-guide { display: grid; grid-template-columns: 1fr; gap: 10px; }
-  @media (min-width: 500px) { .ind-guide { grid-template-columns: 1fr 1fr; } }
-  @media (min-width: 760px) { .ind-guide { grid-template-columns: 1fr 1fr 1fr; } }
-  .ig-item {
-    padding: 14px;
-    background: #f7fafc;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-  }
-  .ig-title { font-size: 16px; font-weight: 800; margin-bottom: 5px; display: flex; align-items: center; gap: 6px; }
-  .ig-desc { font-size: 15px; color: var(--sub); line-height: 1.7; }
-  .ig-desc strong { color: var(--text); }
-
-  /* Push note */
-  .push-note {
-    background: #f0fff4;
-    border: 1.5px solid var(--buy-border);
-    border-radius: 12px;
-    padding: 16px 18px;
-    font-size: 15px;
-    color: #276749;
-    margin-top: 16px;
-    display: flex; align-items: center; gap: 10px;
-  }
-  .push-note strong { font-weight: 800; }
-
-  /* Footer */
-  footer {
-    text-align: center;
-    padding: 20px 16px;
-    font-size: 12px;
-    color: var(--sub);
-    border-top: 1px solid var(--border);
-    background: var(--card);
-  }
-  footer strong { color: var(--text); }
-
-  /* Empty */
-  .empty-state {
-    text-align: center; padding: 48px 20px;
-    font-size: 15px; color: var(--sub);
-    background: var(--card); border-radius: 16px;
-    border: 1.5px dashed var(--border);
-  }
+:root{--bg:#080c0e;--surface:#0d1317;--border:#1a2530;--accent:#00e5a0;--accent2:#e5a000;--danger:#e54040;--text:#c8d8e0;--muted:#4a6070;--mono:'Space Mono',monospace;--sans:'Syne',sans-serif;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,160,0.015) 2px,rgba(0,229,160,0.015) 4px);pointer-events:none;z-index:9999;}
+header{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(8,12,14,0.95);backdrop-filter:blur(10px);z-index:100;}
+.logo{font-family:var(--sans);font-size:1.1rem;font-weight:800;letter-spacing:0.15em;color:var(--accent);}
+.logo span{color:var(--muted);font-weight:400;}
+.header-right{display:flex;align-items:center;gap:16px;font-size:0.72rem;color:var(--muted);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.main{padding:24px 28px;max-width:1100px;margin:0 auto;}
+.assets{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:28px;}
+.asset-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px;position:relative;overflow:hidden;transition:border-color 0.3s;}
+.asset-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--signal-color,var(--muted));transition:background 0.5s;}
+.asset-card:hover{border-color:var(--accent);}
+.asset-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+.asset-name{font-family:var(--sans);font-size:0.75rem;font-weight:700;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;}
+.asset-ticker{font-size:0.65rem;color:var(--muted);background:var(--border);padding:2px 6px;border-radius:2px;}
+.asset-price{font-family:var(--sans);font-size:1.8rem;font-weight:800;line-height:1;margin-bottom:6px;letter-spacing:-0.02em;}
+.asset-change{font-size:0.72rem;padding:2px 6px;border-radius:2px;display:inline-block;margin-bottom:16px;}
+.asset-change.up{background:rgba(0,229,160,0.1);color:var(--accent);}
+.asset-change.dn{background:rgba(229,64,64,0.1);color:var(--danger);}
+.signal-badge{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:3px;margin-bottom:12px;}
+.signal-icon{font-size:1.1rem;}
+.signal-text{font-family:var(--sans);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;}
+.conf-row{display:flex;justify-content:space-between;font-size:0.65rem;color:var(--muted);margin-bottom:4px;}
+.conf-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:12px;}
+.conf-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 1.2s cubic-bezier(0.4,0,0.2,1);width:0%;}
+.factors{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.63rem;color:var(--muted);}
+.factor{display:flex;justify-content:space-between;background:var(--bg);padding:4px 7px;border-radius:2px;}
+.factor-val{color:var(--text);font-weight:700;}
+.factor-val.bull{color:var(--accent);}
+.factor-val.bear{color:var(--danger);}
+.factor-val.neu{color:var(--accent2);}
+.custom-section{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px;margin-bottom:28px;}
+.section-title{font-size:0.65rem;letter-spacing:0.25em;color:var(--muted);text-transform:uppercase;margin-bottom:14px;}
+.ticker-inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.ticker-group{display:flex;flex-direction:column;gap:6px;}
+.ticker-label{font-size:0.62rem;color:var(--muted);letter-spacing:0.1em;}
+.ticker-input-row{display:flex;gap:8px;}
+.ticker-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:0.8rem;padding:8px 10px;border-radius:3px;text-transform:uppercase;outline:none;transition:border-color 0.2s;}
+.ticker-input:focus{border-color:var(--accent);}
+.ticker-input::placeholder{color:var(--muted);text-transform:none;}
+.btn-save{background:var(--accent);color:var(--bg);border:none;font-family:var(--mono);font-size:0.72rem;font-weight:700;padding:8px 14px;border-radius:3px;cursor:pointer;transition:opacity 0.2s;white-space:nowrap;}
+.btn-save:hover{opacity:0.85;}
+.bottom-bar{display:flex;justify-content:space-between;align-items:center;padding:14px 28px;border-top:1px solid var(--border);position:fixed;bottom:0;left:0;right:0;background:rgba(8,12,14,0.97);font-size:0.62rem;color:var(--muted);}
+.history-section{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px;margin-bottom:80px;}
+.history-table{width:100%;border-collapse:collapse;font-size:0.68rem;}
+.history-table th{text-align:left;color:var(--muted);letter-spacing:0.1em;padding:6px 10px;border-bottom:1px solid var(--border);}
+.history-table td{padding:7px 10px;border-bottom:1px solid rgba(26,37,48,0.5);}
+.history-table tr:last-child td{border-bottom:none;}
+.badge{padding:2px 7px;border-radius:2px;font-size:0.62rem;font-weight:700;}
+.badge-buy{background:rgba(0,229,160,0.1);color:var(--accent);}
+.badge-sell{background:rgba(229,64,64,0.1);color:var(--danger);}
+.badge-hold{background:rgba(74,96,112,0.3);color:var(--muted);}
+.badge-hit{background:rgba(0,229,160,0.15);color:var(--accent);}
+.badge-miss{background:rgba(229,64,64,0.15);color:var(--danger);}
+.loading{color:var(--muted);font-size:0.72rem;animation:blink 1s step-end infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@media(max-width:600px){header{padding:14px 16px;}.main{padding:16px;}.bottom-bar{padding:10px 16px;flex-direction:column;gap:4px;}.ticker-inputs{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
-
-<!-- Header -->
-<div class="header">
-  <div class="header-inner">
-    <h1>🏅 GLD-MMS 貴金屬預警系統
-      <small>黃金 · 白銀 · GLD ETF — AI 趨勢信號即時分析</small>
-    </h1>
-    <div class="header-meta">
-      <div class="update-badge">
-        <span class="live-dot"></span>
-        <span id="update-time">載入中...</span>
+<header>
+  <div class="logo">SIGNAL <span>// 資產預警</span></div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+    <span id="hdr-time">--:--:--</span>
+    <span id="hdr-status">連線中</span>
+  </div>
+</header>
+<div class="main">
+  <div class="custom-section">
+    <div class="section-title">自訂追蹤標的</div>
+    <div class="ticker-inputs">
+      <div class="ticker-group">
+        <div class="ticker-label">台股代碼（如 2330.TW）</div>
+        <div class="ticker-input-row">
+          <input class="ticker-input" id="tw-input" type="text" placeholder="例：2330.TW" maxlength="12">
+          <button class="btn-save" onclick="saveTickers()">套用</button>
+        </div>
       </div>
-      <div class="push-badge">📱 三台設備推播啟用中</div>
+      <div class="ticker-group">
+        <div class="ticker-label">美股代碼（如 NVDA）</div>
+        <div class="ticker-input-row">
+          <input class="ticker-input" id="us-input" type="text" placeholder="例：NVDA" maxlength="10">
+          <button class="btn-save" onclick="saveTickers()">套用</button>
+        </div>
+      </div>
     </div>
+  </div>
+  <div class="assets" id="assets-grid">
+    <div class="asset-card"><div class="loading">載入黃金數據...</div></div>
+    <div class="asset-card"><div class="loading">載入白銀數據...</div></div>
+    <div class="asset-card"><div class="loading">載入台股數據...</div></div>
+    <div class="asset-card"><div class="loading">載入美股數據...</div></div>
+  </div>
+  <div class="history-section">
+    <div class="section-title">近期信號紀錄（勝率追蹤）</div>
+    <table class="history-table">
+      <thead><tr><th>時間</th><th>標的</th><th>信號</th><th>信心度</th><th>進場價</th><th>5日後</th><th>結果</th></tr></thead>
+      <tbody id="history-tbody"><tr><td colspan="7" style="color:var(--muted);padding:16px 10px">載入歷史紀錄...</td></tr></tbody>
+    </table>
   </div>
 </div>
-
-<div class="container">
-
-  <!-- Asset Cards -->
-  <div class="section-title">📊 即時信號總覽 <span></span></div>
-  <div class="assets-grid" id="assets-grid">
-    <div class="empty-state">📡 資料載入中，請稍候...</div>
-  </div>
-
-  <!-- AI Model Analysis -->
-  <div class="section-title">🧠 XGBoost AI 模型分析 <span></span></div>
-  <div class="model-card" id="model-card">
-    <div class="empty-state" style="padding:24px">📡 等待模型數據...</div>
-  </div>
-
-  <!-- Signal Guide -->
-  <div class="section-title">🗺️ 信號說明 — 一看就懂 <span></span></div>
-  <div class="guide-card">
-    <div class="signal-legend">
-      <div class="sl-item">
-        <span class="sl-emoji">🚀</span>
-        <span class="sl-label buy">強力買進</span>
-        <span class="sl-desc">STRONG BUY</span>
-      </div>
-      <div class="sl-item">
-        <span class="sl-emoji">📈</span>
-        <span class="sl-label buy">買進</span>
-        <span class="sl-desc">BUY</span>
-      </div>
-      <div class="sl-item">
-        <span class="sl-emoji">👀</span>
-        <span class="sl-label pre">準備買進</span>
-        <span class="sl-desc">PRE BUY</span>
-      </div>
-      <div class="sl-item">
-        <span class="sl-emoji">⏳</span>
-        <span class="sl-label hold">觀望等待</span>
-        <span class="sl-desc">HOLD</span>
-      </div>
-      <div class="sl-item">
-        <span class="sl-emoji">📉</span>
-        <span class="sl-label sell">賣出</span>
-        <span class="sl-desc">SELL</span>
-      </div>
-      <div class="sl-item">
-        <span class="sl-emoji">🔴</span>
-        <span class="sl-label sell">強力賣出</span>
-        <span class="sl-desc">STRONG SELL</span>
-      </div>
-    </div>
-
-    <!-- Indicator Guide -->
-    <div class="ind-guide">
-      <div class="ig-item">
-        <div class="ig-title">🎯 信心度</div>
-        <div class="ig-desc">AI 對信號的把握程度。<strong>超過 80% 才會推播通知</strong>，代表信號可信度高，可以認真看待。</div>
-      </div>
-      <div class="ig-item">
-        <div class="ig-title">📏 VWAP 乖離率</div>
-        <div class="ig-desc">現價偏離機構平均成本的幅度。<strong>正值 = 偏貴</strong>，<strong>負值過深 = 超跌</strong>，通常會回歸均值。</div>
-      </div>
-      <div class="ig-item">
-        <div class="ig-title">⚡ OBV 能量方向</div>
-        <div class="ig-desc">成交量累積方向。<strong>OBV 上升 = 資金持續流入</strong>（看漲）；<strong>下降 = 資金撤出</strong>（看跌）。</div>
-      </div>
-      <div class="ig-item">
-        <div class="ig-title">🔥 ATR 波動擠壓</div>
-        <div class="ig-desc">市場進入沉寂期，波動縮小至歷史低點。<strong>通常是大行情前兆</strong>，即將出現方向性突破。</div>
-      </div>
-      <div class="ig-item">
-        <div class="ig-title">↗ 底背離（看漲）</div>
-        <div class="ig-desc"><strong>價格下跌、OBV 上升</strong> = 聰明錢悄悄進場，底部反轉機率高，適合左側布局。</div>
-      </div>
-      <div class="ig-item">
-        <div class="ig-title">↘ 頂背離（看跌）</div>
-        <div class="ig-desc"><strong>價格上漲、OBV 下降</strong> = 主力悄悄出貨，頂部反轉機率高，注意停利或觀望。</div>
-      </div>
-    </div>
-
-    <div class="push-note">
-      📱 <div><strong>Bark 推播規則：</strong>信心度 &gt; 80% 且出現買進或賣出信號時，自動同步推送至三台 iOS 設備。觀望（HOLD）及信心度不足時<strong>不推播</strong>，避免假訊號干擾。</div>
-    </div>
-  </div>
-
+<div class="bottom-bar">
+  <span>SIGNAL v5.0 · XGBoost+COT</span>
+  <span id="last-update">最後更新：--</span>
+  <span>⚠️ 僅供參考，非投資建議</span>
 </div>
-
-<footer>
-  <strong>GLD-MMS v4.1</strong> · 資料來源：Yahoo Finance &amp; FRED · 每 5 分鐘自動更新（週一至週五）<br>
-  ⚠️ 本頁面僅供參考，<strong>不構成任何投資建議</strong>，請自行判斷風險。
-</footer>
-
-<script id="data-source">const AUTO_DATA = {"timestamp": "2026-04-28T01:18:11.008423Z", "version": "v6.0 Top-10%-Model", "regime": "UNKNOWN", "assets": {}, "daily": {}, "macro": {"USD_Index": {"close": 98.53900146484375, "rsi": 31.520703573184733, "note": "USD_Index: 98.54 (RSI 32)"}, "10Y_Treasury": {"close": 4.335999965667725, "rsi": 49.05660862367681, "note": "10Y_Treasury: 4.34 (RSI 49)"}, "VIX": {"close": 18.020000457763672, "rsi": 19.157391590048007, "note": "VIX: 18.02 (RSI 19)"}, "cot_gold": {"date": "2026-04-21", "open_interest": 365842, "comm_net": -202940, "spec_net": 164006, "spec_net_pct": 44.8, "spec_ls_ratio": 4.35, "spec_long": 212893, "spec_short": 48887, "trend": "\u2500 \u6301\u5e73", "signal": "\ud83d\udcc8 \u5927\u6236\u504f\u591a", "score_add": 10, "next_release_in_hours": 92.7, "note": "CFTC \u6bcf\u9031\u4e94\u767c\u5e03\uff0c\u53cd\u6620\u7576\u9031\u4e8c\u6301\u5009", "summary": "2026-04-21 | \u6295\u6a5f\u6de8\u591a 44.8% OI | \u2500 \u6301\u5e73 | \ud83d\udcc8 \u5927\u6236\u504f\u591a", "_fetched_at": "2026-04-28T01:18:10.218988+00:00", "_from_cache": false}, "cot_silver": {"date": "2026-04-21", "open_interest": 115462, "comm_net": -40985, "spec_net": 23720, "spec_net_pct": 20.5, "spec_ls_ratio": 3.49, "spec_long": 33233, "spec_short": 9513, "trend": "\u2500 \u6301\u5e73", "signal": "\ud83d\udcc8 \u5927\u6236\u504f\u591a", "score_add": 10, "next_release_in_hours": 92.7, "note": "CFTC \u6bcf\u9031\u4e94\u767c\u5e03\uff0c\u53cd\u6620\u7576\u9031\u4e8c\u6301\u5009", "summary": "2026-04-21 | \u6295\u6a5f\u6de8\u591a 20.5% OI | \u2500 \u6301\u5e73 | \ud83d\udcc8 \u5927\u6236\u504f\u591a", "_fetched_at": "2026-04-28T01:18:11.008140+00:00", "_from_cache": false}}, "signals": {"GC=F": {"ticker": "GC=F", "short_term": {"signal": "STRONG_BUY", "confidence": 95, "tech_score": 85, "lambda_score": 85, "reason": "Lambda AI 85% + COT+10\uff08\u6280\u8853\u6307\u6a19\u66ab\u6642\u4e0d\u53ef\u7528\uff09", "regime": "UNKNOWN"}, "feature_vector": {"rsi": 50.0, "macd_hist": 0.0, "bb_pos": 0.5, "stoch_k": 50.0, "adx": 0.0, "cci": 0.0, "williams_r": -50.0, "momentum_pct": 0.0, "vwap_dev": 0.0, "cot_score_add": 10, "cot_spec_net_pct": 44.8, "cot_spec_ls_ratio": 4.35, "regime": "UNKNOWN", "daily_rsi": null}, "radar": {"msg": "\u6280\u8853\u6307\u6a19\u4e0d\u53ef\u7528\uff08yfinance \u8cc7\u6599\u683c\u5f0f\u7570\u5e38\uff09", "bull_div": false, "bear_div": false, "atr_low": false, "regime": "UNKNOWN"}, "smart_money": {"etf_flow": "\u6d41\u5165 \u25b2", "etf_ratio": 4.643, "cot_report": "2026-04-21 | \u6295\u6a5f\u6de8\u591a 44.8% OI | \u2500 \u6301\u5e73 | \ud83d\udcc8 \u5927\u6236\u504f\u591a", "cot_detail": {"date": "2026-04-21", "open_interest": 365842, "comm_net": -202940, "spec_net": 164006, "spec_net_pct": 44.8, "spec_ls_ratio": 4.35, "spec_long": 212893, "spec_short": 48887, "trend": "\u2500 \u6301\u5e73", "signal": "\ud83d\udcc8 \u5927\u6236\u504f\u591a", "score_add": 10, "next_release_in_hours": 92.7, "note": "CFTC \u6bcf\u9031\u4e94\u767c\u5e03\uff0c\u53cd\u6620\u7576\u9031\u4e8c\u6301\u5009", "summary": "2026-04-21 | \u6295\u6a5f\u6de8\u591a 44.8% OI | \u2500 \u6301\u5e73 | \ud83d\udcc8 \u5927\u6236\u504f\u591a", "_fetched_at": "2026-04-28T01:18:10.218988+00:00", "_from_cache": false}}, "performance": {"sharpe": null, "win_rate": null, "cv_win_rate_1d": 49.2, "cv_win_rate_5d": null, "max_dd": null, "equity_curve": []}, "position_sizing": {"atr_risk_pct": 2.0, "kelly_fraction": 0.5, "recommended_contracts": 1}, "breakdown": ["AI\u8a55\u5206: 85% (\ud83d\ude80 \u5f37\u529b\u8cb7\u9032)", "COT\u5927\u6236\u504f\u591a: 44.8% OI (LS\u6bd4 4.35)", "\u9ad4\u5236: UNKNOWN\uff08\u6280\u8853\u6307\u6a19\u4e0d\u53ef\u7528\uff09", "Kelly\u5009\u4f4d: 50% (1\u5408\u7d04) | COT++10"], "price": 4704.3, "close": 4704.3, "vwap_dev": 0.0}}, "win_rate_20": null, "backtest": {}, "lambda": {"score": 85, "signal": "\ud83d\ude80 \u5f37\u529b\u8cb7\u9032", "status": "v4.0 VIX+DXY+Seasonal XGBoost", "smart_money": {"etf_flow": "\u6d41\u5165 \u25b2", "etf_ratio": 4.643, "cot_report": "\u7531 update_gld_data.py \u63a5\u5165"}, "performance": {"sharpe": null, "win_rate": null, "cv_win_rate_1d": 49.2, "cv_win_rate_5d": null, "max_dd": null, "equity_curve": []}, "model": {"type": "XGBoost", "features": 36, "train_samples": 1204, "horizons": {"1d": {"prob_up": 70.4, "cv_win_rate": 53.8}, "5d": {"prob_up": 85.2, "cv_win_rate": 49.2}, "30d": {"prob_up": 88.6, "cv_win_rate": 64.2}}}, "prob_up": 85.2, "prob_dn": 14.8, "breakdown": ["COT\u5927\u6236\u504f\u591a: 44.8% OI", "LS\u6bd4\u7387: 4.35"]}};</script>
 <script>
-(function () {
-  const data = (typeof AUTO_DATA !== 'undefined') ? AUTO_DATA : {};
-  const signals = data.signals || {};
-  const assets_raw = (data.assets && Object.keys(data.assets).length > 0) ? data.assets : (data.signals || {});
-  const ts = data.timestamp;
-
-  // Update time
-  const timeEl = document.getElementById('update-time');
-  if (ts) {
-    // 補上 'Z' 確保 JavaScript 將時間戳視為 UTC，再轉台北時間
-    const utcTs = ts.endsWith('Z') ? ts : ts + 'Z';
-    const d = new Date(utcTs);
-    timeEl.textContent = '最後更新：' + d.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + '（台北）';
-  } else {
-    timeEl.textContent = '等待資料...';
-  }
-
-  const CFG = {
-    'GC=F': { label: '🥇 黃金期貨', cls: 'gold', unit: 'USD / oz' },
-    'SI=F': { label: '🥈 白銀期貨', cls: 'silver', unit: 'USD / oz' },
-    'GLD':  { label: '📊 GLD ETF',  cls: 'gold',   unit: 'USD' }
-  };
-
-  const SIG_LABEL = {
-    STRONG_BUY:  { icon: '🚀', text: '強力買進' },
-    BUY:         { icon: '📈', text: '買進' },
-    PRE_BUY:     { icon: '👀', text: '準備買進' },
-    HOLD:        { icon: '⏳', text: '觀望' },
-    SELL:        { icon: '📉', text: '賣出' },
-    STRONG_SELL: { icon: '🔴', text: '強力賣出' }
-  };
-
-  function confCls(c) { return c >= 80 ? 'high' : c >= 60 ? 'mid' : 'low'; }
-
-  function getLatest(ticker) {
-    // For signals mode: data is signal object, not OHLCV array
-    const asset = assets_raw[ticker];
-    if (!asset) return null;
-    if (asset.short_term) return asset;  // signals mode
-    const rows = asset;
-    return (rows && rows.length) ? rows[rows.length - 1] : null;
-  }
-
-  function renderCard(ticker) {
-    const cfg = CFG[ticker];
-    if (!cfg) return '';
-    const sig = signals[ticker];
-    if (!sig) return '';
-
-    const st = sig.short_term || {};
-    const radar = sig.radar || {};
-    const signal = st.signal || 'HOLD';
-    const conf = st.confidence || 0;
-    const reason = st.reason || '';
-    const price = sig.price || 0;
-    const vdev = sig.vwap_dev || 0;
-    const sl = SIG_LABEL[signal] || { icon: '⏳', text: signal };
-    const cc = confCls(conf);
-
-    const latest = getLatest(ticker);
-    const obvOk = latest && latest.obv != null && latest.obv_ma5 != null;
-    let obvHtml = '<span class="ind-val neutral">—</span>';
-    if (obvOk) {
-      obvHtml = latest.obv > latest.obv_ma5
-        ? '<span class="ind-val up">上升 ▲</span>'
-        : '<span class="ind-val down">下降 ▼</span>';
-    }
-    const vdevCls = vdev > 0.5 ? 'up' : vdev < -0.5 ? 'down' : 'neutral';
-
-    // Radar tags
-    let radarHtml = '';
-    const tags = [];
-    if (radar.squeeze)        tags.push({ t: '⚡ 波動擠壓', c: 'warn' });
-    if (radar.divergence)     tags.push({ t: '↗ 底背離',   c: 'bull' });
-    if (radar.bear_divergence)tags.push({ t: '↘ 頂背離',   c: 'bear' });
-    if (radar.oversold)       tags.push({ t: '💧 超跌',    c: 'bull' });
-    if (radar.overbought)     tags.push({ t: '🔥 超買',    c: 'bear' });
-    if (tags.length) {
-      radarHtml = `<div class="radar-tags">${tags.map(t => `<span class="rtag ${t.c}">${t.t}</span>`).join('')}</div>`;
-    } else {
-      radarHtml = `<div class="radar-tags"><span class="rtag none">雷達掃描中...</span></div>`;
-    }
-
-    const pushNote = conf > 80 && signal !== 'HOLD'
-      ? `<span class="push-active">📱 已推播至三台設備</span>` : '';
-
-    return `
-<div class="asset-card">
-  <div class="card-top">
-    <div class="card-top-left">
-      <div class="asset-label">${cfg.label}</div>
-      <div class="asset-price ${cfg.cls}">$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-      <div class="asset-unit">${cfg.unit}</div>
-    </div>
-    <div class="signal-wrap">
-      <div class="signal-badge ${signal}">${sl.icon} ${sl.text}</div>
-    </div>
-  </div>
-  <div class="card-body">
-    <div class="conf-row">
-      <span class="conf-label">🎯 AI 信心度</span>
-      <span class="conf-num ${cc}">${conf}%${conf > 80 ? ' ✅' : ''}</span>
-    </div>
-    <div class="conf-track"><div class="conf-fill ${cc}" style="width:${conf}%"></div></div>
-    ${pushNote ? `<div style="margin-bottom:8px">${pushNote}</div>` : ''}
-    <div class="reason-box ${signal}">💬 ${reason}</div>
-    <div class="indicators">
-      <div class="ind">
-        <div class="ind-name">VWAP 乖離率</div>
-        <div class="ind-val ${vdevCls}">${vdev > 0 ? '+' : ''}${vdev.toFixed(2)}%</div>
-      </div>
-      <div class="ind">
-        <div class="ind-name">OBV 能量</div>
-        <div>${obvHtml}</div>
-      </div>
-    </div>
-    <div style="font-size:11px;color:#a0aec0;font-weight:700;letter-spacing:0.5px;margin-top:10px;margin-bottom:4px">🔭 前瞻雷達</div>
-    ${radarHtml}
-  </div>
-</div>`;
-  }
-
-  const tickers = ['GC=F', 'SI=F', 'GLD'];
-  const cards = tickers.map(renderCard).filter(Boolean).join('');
-  const grid = document.getElementById('assets-grid');
-  if (cards) {
-    grid.innerHTML = cards;
-  } else {
-    grid.innerHTML = '<div class="empty-state">📡 尚無資料，等待下次自動更新（每 5 分鐘）</div>';
-  }
-
-  // ── AI Model Card ──────────────────────────────────────────
-  const FEAT_NAMES = {
-    'ret_1d':'1日報酬率','ret_3d':'3日報酬率','ret_5d':'5日報酬率','ret_10d':'10日報酬率',
-    'ma_dev5':'MA5乖離率','ma_dev20':'MA20乖離率','ma_cross':'均線交叉',
-    'rsi_norm':'RSI超買超賣','obv_trend':'OBV短期趨勢','obv_div':'OBV長期背離',
-    'vwap_dev':'VWAP乖離率','atr_ratio':'ATR波動率','atr_trend':'ATR擴張',
-    'vol_ratio':'成交量比','vol_trend':'成交量趨勢','bull_div':'底背離','bear_div':'頂背離'
-  };
-  const lam = data.lambda || {};
-  const model = lam.model || {};
-  const horizons = model.horizons || {};
-  const topFeats = model.top_features || [];
-  const perf = lam.performance || {};
-  const smartMoney = lam.smart_money || {};
-  const mcEl = document.getElementById('model-card');
-
-  function horizonHtml(key, label) {
-    const h = horizons[key] || {};
-    const pu = h.prob_up;
-    const wr = h.cv_win_rate;
-    if (pu === null || pu === undefined) return `<div class="horizon-item"><div class="horizon-label">${label}</div><div class="horizon-prob neutral">—</div><div class="horizon-wr">數據不足</div></div>`;
-    const cls = pu >= 60 ? 'bull' : pu <= 40 ? 'bear' : 'neutral';
-    return `<div class="horizon-item">
-      <div class="horizon-label">${label}</div>
-      <div class="horizon-prob ${cls}">${pu}%</div>
-      <div class="horizon-wr">CV勝率 <strong>${wr !== null ? wr+'%' : '—'}</strong></div>
-    </div>`;
-  }
-
-  if (lam.score !== undefined || Object.keys(model).length || topFeats.length) {
-    const featRows = topFeats.map((f,i) => {
-      // importance 可能是小數(0.25)或百分比(25.1)，統一轉成百分比
-      const raw = f.importance;
-      const pct = raw <= 1 ? Math.round(raw * 100) : Math.round(raw);
-      const barW = Math.min(100, pct * 2);
-      return `<li class="feat-item">
-        <span class="feat-rank">${i+1}</span>
-        <span class="feat-name">${FEAT_NAMES[f.name] || f.name}</span>
-        <div class="feat-bar-wrap"><div class="feat-bar-bg"><div class="feat-bar-fill" style="width:${barW}%"></div></div></div>
-        <span class="feat-pct">${pct}%</span>
-      </li>`;
-    }).join('');
-
-    // 相容新舊結構：有 horizons 用多框架，否則用 cv_win_rate 顯示 1D
-    let horizonsHtml = '';
-    if (horizons && Object.keys(horizons).length) {
-      horizonsHtml = `<div style="margin-bottom:16px">
-        <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">📅 多時間框架漲跌機率預測</div>
-        <div class="horizons-grid">
-          ${horizonHtml('1d','隔日 (1D)')}
-          ${horizonHtml('5d','5天後 (5D)')}
-          ${horizonHtml('30d','30天後 (30D)')}
-        </div>
-      </div>`;
-    } else if (model.horizons || lam.prob_up || model.type) {
-      // 舊結構：只有 1D 數據
-      const pu = lam.prob_up || 50;
-      const wr = model.cv_win_rate || '—';
-      const cls = pu >= 60 ? 'bull' : pu <= 40 ? 'bear' : 'neutral';
-      horizonsHtml = `<div style="margin-bottom:16px">
-        <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">📅 漲跌機率預測</div>
-        <div class="horizons-grid">
-          <div class="horizon-item">
-            <div class="horizon-label">隔日 (1D)</div>
-            <div class="horizon-prob ${cls}">${pu}%</div>
-            <div class="horizon-wr">CV勝率 <strong>${wr}%</strong></div>
-          </div>
-          <div class="horizon-item">
-            <div class="horizon-label">5天後 (5D)</div>
-            <div class="horizon-prob neutral">—</div>
-            <div class="horizon-wr">更新中...</div>
-          </div>
-          <div class="horizon-item">
-            <div class="horizon-label">30天後 (30D)</div>
-            <div class="horizon-prob neutral">—</div>
-            <div class="horizon-wr">更新中...</div>
-          </div>
-        </div>
-      </div>`;
-    } else if (lam.score !== undefined) {
-      // Lambda score 存在但沒有 model 詳細資料 → 用 performance 顯示
-      const sc = lam.score;
-      const sig = lam.signal || '—';
-      const wr1d = perf.cv_win_rate_1d;
-      const wr5d = perf.cv_win_rate_5d;
-      const scCls = sc >= 60 ? 'bull' : sc <= 40 ? 'bear' : 'neutral';
-      horizonsHtml = `<div style="margin-bottom:16px">
-        <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">🤖 XGBoost AI 模型評分</div>
-        <div class="horizons-grid">
-          <div class="horizon-item">
-            <div class="horizon-label">模型分數</div>
-            <div class="horizon-prob ${scCls}">${sc}</div>
-            <div class="horizon-wr">${sig}</div>
-          </div>
-          <div class="horizon-item">
-            <div class="horizon-label">CV勝率 (1D)</div>
-            <div class="horizon-prob ${wr1d >= 60 ? 'bull' : wr1d <= 40 ? 'bear' : 'neutral'}">${wr1d != null ? wr1d+'%' : '—'}</div>
-            <div class="horizon-wr">隔日預測</div>
-          </div>
-          <div class="horizon-item">
-            <div class="horizon-label">CV勝率 (5D)</div>
-            <div class="horizon-prob ${wr5d >= 60 ? 'bull' : wr5d <= 40 ? 'bear' : 'neutral'}">${wr5d != null ? wr5d+'%' : '—'}</div>
-            <div class="horizon-wr">5天預測</div>
-          </div>
-        </div>
-      </div>`;
-    }
-    mcEl.innerHTML = `
-      ${horizonsHtml}
-      ${topFeats.length ? `
-      <div>
-        <div style="font-size:15px;color:var(--sub);margin-bottom:10px;font-weight:600">🔝 最重要特徵 Top ${topFeats.length}（模型自動學習）</div>
-        <ul class="feat-list">${featRows}</ul>
-      </div>` : ''}
-      <div class="model-meta">
-        <span class="model-tag">🤖 ${model.type || 'XGBoost'}</span>
-        <span class="model-tag">📊 ${model.train_samples || '—'} 筆訓練數據</span>
-        <span class="model-tag">🔢 ${model.features || '—'} 個特徵</span>
-        <span class="model-tag">📈 ETF: ${smartMoney.etf_flow || '—'}</span>
-        ${perf.sharpe ? `<span class="model-tag">⚡ Sharpe: ${perf.sharpe}</span>` : ''}
-      </div>
-
-      <!-- ── 新增：COT / VIX / DXY / 季節性 顯示區 ── -->
-      ${(() => {
-        const cot = smartMoney.cot_detail || {};
-        const lam = data.lambda || {};
-        const macro = data.macro || {};
-        const cotGold = macro.cot_gold || cot;
-        const modelStatus = lam.status || '';
-        const hasVix = modelStatus.includes('VIX');
-        const hasDxy = modelStatus.includes('DXY');
-        const hasSeasonal = modelStatus.includes('Seasonal');
-
-        // COT 區塊
-        const cotHtml = cotGold.spec_net_pct != null ? `
-        <div style="margin-top:14px;padding:12px 14px;background:#f0fff4;border:1.5px solid #c6f6d5;border-radius:12px">
-          <div style="font-size:13px;font-weight:700;color:#22543d;margin-bottom:8px">
-            📋 CFTC COT 大戶持倉 <span style="font-weight:400;color:#718096;font-size:11px">（每週五更新，反映週二數據）</span>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:12px">
-            <div style="background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #c6f6d5">
-              <div style="color:#718096;margin-bottom:2px">投機淨多率</div>
-              <div style="font-size:18px;font-weight:800;color:${cotGold.spec_net_pct > 15 ? '#22863a' : cotGold.spec_net_pct < 5 ? '#c53030' : '#b7791f'}">${cotGold.spec_net_pct}% <span style="font-size:11px;font-weight:400">OI</span></div>
-            </div>
-            <div style="background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #c6f6d5">
-              <div style="color:#718096;margin-bottom:2px">多空比</div>
-              <div style="font-size:18px;font-weight:800;color:#2b6cb0">${cotGold.spec_ls_ratio}x</div>
-            </div>
-            <div style="background:#fff;padding:8px 10px;border-radius:8px;border:1px solid #c6f6d5">
-              <div style="color:#718096;margin-bottom:2px">大戶信號</div>
-              <div style="font-size:14px;font-weight:700">${cotGold.signal || '—'}</div>
-            </div>
-          </div>
-          <div style="margin-top:8px;font-size:12px;color:#4a5568">
-            週趨勢：<strong>${cotGold.trend || '—'}</strong> ｜
-            未平倉：${cotGold.open_interest ? cotGold.open_interest.toLocaleString() : '—'} ｜
-            報告日：${cotGold.date || '—'}
-          </div>
-        </div>` : '';
-
-        // 模型新特徵標籤
-        const newFeatsHtml = (hasVix || hasDxy || hasSeasonal) ? `
-        <div style="margin-top:10px">
-          <div style="font-size:12px;color:#718096;margin-bottom:6px;font-weight:600">🧠 模型已整合新因子：</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            ${hasVix ? '<span style="background:#fff5f5;border:1px solid #fed7d7;color:#c53030;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">😱 VIX 恐慌指數</span>' : ''}
-            ${hasDxy ? '<span style="background:#ebf8ff;border:1px solid #bee3f8;color:#2b6cb0;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">💵 DXY 美元走勢</span>' : ''}
-            ${hasSeasonal ? '<span style="background:#fffff0;border:1px solid #fefcbf;color:#b7791f;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">📅 季節性因子</span>' : ''}
-            <span style="background:#f0fff4;border:1px solid #c6f6d5;color:#22543d;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600">📋 CFTC COT 持倉</span>
-          </div>
-        </div>` : '';
-
-        return cotHtml + newFeatsHtml;
-      })()}
-
-      <div style="font-size:13px;color:var(--sub);margin-top:12px;padding:10px 12px;background:#f7fafc;border-radius:8px">
-        ⚠️ <strong>免責聲明：</strong>XGBoost 機率為統計模型輸出，基於歷史數據訓練，不保證未來表現。漲跌機率 ≥ 72% 才觸發推播。
-      </div>`;
-  } else {
-    mcEl.innerHTML = '<div class="empty-state" style="padding:24px">📡 等待 Lambda 模型數據...</div>';
-  }
-})();
+const S3='https://gld-mms-data-richtrong.s3.ap-northeast-1.amazonaws.com/data.json';
+const LS_TW='signal_tw_ticker',LS_US='signal_us_ticker';
+const SIG={'STRONG_BUY':{icon:'🚀',text:'強力買進',color:'#00e5a0'},'BUY':{icon:'📈',text:'買進',color:'#00e5a0'},'PRE_BUY':{icon:'👀',text:'準備買進',color:'#e5a000'},'HOLD':{icon:'⏳',text:'觀望',color:'#4a6070'},'SELL':{icon:'📉',text:'賣出',color:'#e54040'},'STRONG_SELL':{icon:'🔴',text:'強力賣出',color:'#e54040'}};
+function getSig(s){if(s>=80)return'STRONG_BUY';if(s>=65)return'BUY';if(s>=55)return'PRE_BUY';if(s>=45)return'HOLD';if(s>=30)return'SELL';return'STRONG_SELL';}
+function fmtPrice(p,sym){if(!p)return'--';if(sym&&sym.includes('.TW'))return'NT$'+p.toLocaleString();if(p>100)return'$'+p.toLocaleString(undefined,{maximumFractionDigits:2});return'$'+p.toFixed(2);}
+function renderCard(id,d){
+  const score=d.score??50,sig=SIG[getSig(score)]||SIG['HOLD'],ch=d.change??0,chCls=ch>=0?'up':'dn',chSign=ch>=0?'+':'';
+  const fx=Object.entries(d.factors||{}).map(([k,v])=>{let c='neu';if(typeof v==='number'){c=v>0?'bull':v<0?'bear':'neu';}else if(/buy|bull|up|multi|long/i.test(String(v)))c='bull';else if(/sell|bear|dn|short/i.test(String(v)))c='bear';return`<div class="factor"><span>${k}</span><span class="factor-val ${c}">${v}</span></div>`;}).join('');
+  return`<div class="asset-card" style="--signal-color:${sig.color}"><div class="asset-header"><div><div class="asset-name">${d.name||id}</div></div><div class="asset-ticker">${d.ticker||id}</div></div><div class="asset-price">${fmtPrice(d.price,d.ticker)}</div><div class="asset-change ${chCls}">${chSign}${ch?.toFixed(2)}%</div><div class="signal-badge" style="border-color:${sig.color}22;background:${sig.color}08"><span class="signal-icon">${sig.icon}</span><span class="signal-text" style="color:${sig.color}">${sig.text}</span></div><div class="conf-row"><span>信心度</span><span style="color:var(--text)">${score}%</span></div><div class="conf-bar"><div class="conf-fill" style="width:${score}%;background:${sig.color}"></div></div><div class="factors">${fx}</div></div>`;}
+function renderHistory(rows){if(!rows||!rows.length)return'<tr><td colspan="7" style="color:var(--muted);padding:16px 10px">暫無歷史紀錄</td></tr>';return rows.map(r=>{const sc=SIG[r.signal]||SIG['HOLD'],bc=r.signal.includes('BUY')?'badge-buy':r.signal.includes('SELL')?'badge-sell':'badge-hold',rc=r.result==='HIT'?'badge-hit':r.result==='MISS'?'badge-miss':'badge-hold';return`<tr><td>${r.time||'--'}</td><td>${r.ticker||'--'}</td><td><span class="badge ${bc}">${sc.text}</span></td><td>${r.confidence||'--'}%</td><td>${r.entry?'$'+r.entry:'--'}</td><td>${r.exit5d?(r.exit5d>0?'+':'')+r.exit5d+'%':'進行中'}</td><td>${r.result?'<span class="badge '+rc+'">'+(r.result==='HIT'?'✓ 命中':'✗ 失誤')+'</span>':'--'}</td></tr>`;}).join('');}
+function getTWTicker(){return localStorage.getItem(LS_TW)||'2330.TW';}
+function getUSTicker(){return localStorage.getItem(LS_US)||'NVDA';}
+function saveTickers(){const tw=document.getElementById('tw-input').value.trim().toUpperCase(),us=document.getElementById('us-input').value.trim().toUpperCase();if(tw)localStorage.setItem(LS_TW,tw.includes('.TW')?tw:tw+'.TW');if(us)localStorage.setItem(LS_US,us);update();}
+async function update(){try{const res=await fetch(S3+'?t='+Date.now());if(!res.ok)throw new Error(res.status);const d=await res.json();
+const twT=getTWTicker(),usT=getUSTicker();
+const cards=[d.assets?.gold||{name:'黃金',ticker:'GC=F',score:d.score,price:d.gold?.price,change:d.gold?.change,factors:{'XGBoost':(d.score||0)+'%','ETF流向':d.smart_money?.etf_flow||'--','COT':d.smart_money?.cot_report||'--'}},d.assets?.silver||{name:'白銀',ticker:'SI=F',score:null,price:null,change:null,factors:{}},{name:twT.replace('.TW',''),ticker:twT,score:d.assets?.tw?.score||null,price:d.assets?.tw?.price||null,change:d.assets?.tw?.change||null,factors:d.assets?.tw?.factors||{}},{name:usT,ticker:usT,score:d.assets?.us?.score||null,price:d.assets?.us?.price||null,change:d.assets?.us?.change||null,factors:d.assets?.us?.factors||{}}];
+document.getElementById('assets-grid').innerHTML=cards.map((c,i)=>renderCard(i,c)).join('');
+setTimeout(()=>{document.querySelectorAll('.conf-fill').forEach(el=>{const w=el.style.width;el.style.width='0%';setTimeout(()=>{el.style.width=w;},50);});},100);
+if(d.history)document.getElementById('history-tbody').innerHTML=renderHistory(d.history);
+document.getElementById('hdr-status').textContent='即時';
+document.getElementById('last-update').textContent='最後更新：'+new Date(d.timestamp).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+}catch(e){document.getElementById('hdr-status').textContent='連線失敗';console.error(e);}}
+function initInputs(){document.getElementById('tw-input').value=getTWTicker();document.getElementById('us-input').value=getUSTicker();}
+function tick(){document.getElementById('hdr-time').textContent=new Date().toLocaleTimeString('zh-TW',{hour12:false});}
+initInputs();update();setInterval(update,60000);setInterval(tick,1000);tick();
 </script>
 </body>
 </html>
