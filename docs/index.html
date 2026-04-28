@@ -5,143 +5,511 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SIGNAL // 資產預警系統</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#080c0e;--surface:#0d1317;--border:#1a2530;--accent:#00e5a0;--accent2:#e5a000;--danger:#e54040;--text:#c8d8e0;--muted:#4a6070;--mono:'Space Mono',monospace;--sans:'Syne',sans-serif;}
+:root{
+  --cream:#f5f0e8;
+  --black:#0a0a0a;
+  --gold:#c9a84c;
+  --gold-light:#e8d5a3;
+  --gray:#8a8279;
+  --gray-light:#d4cec4;
+  --surface:#f0ebe3;
+  --border:#ddd8ce;
+  --accent:#1a1a1a;
+  --muted:#a09890;
+  --up:#4a7c59;
+  --dn:#8b3a3a;
+  --serif:'Cormorant Garamond',Georgia,serif;
+  --mono:'Courier Prime',Courier,monospace;
+}
 *{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;overflow-x:hidden;}
-body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,229,160,0.015) 2px,rgba(0,229,160,0.015) 4px);pointer-events:none;z-index:9999;}
-header{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid var(--border);position:sticky;top:0;background:rgba(8,12,14,0.95);backdrop-filter:blur(10px);z-index:100;}
-.logo{font-family:var(--sans);font-size:1.1rem;font-weight:800;letter-spacing:0.15em;color:var(--accent);}
-.logo span{color:var(--muted);font-weight:400;}
-.header-right{display:flex;align-items:center;gap:16px;font-size:0.72rem;color:var(--muted);}
-.status-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s ease-in-out infinite;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-.main{padding:24px 28px;max-width:1100px;margin:0 auto;}
-.assets{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:28px;}
-.asset-card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px;position:relative;overflow:hidden;transition:border-color 0.3s;}
-.asset-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--signal-color,var(--muted));transition:background 0.5s;}
-.asset-card:hover{border-color:var(--accent);}
-.asset-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
-.asset-name{font-family:var(--sans);font-size:0.75rem;font-weight:700;letter-spacing:0.2em;color:var(--muted);text-transform:uppercase;}
-.asset-ticker{font-size:0.65rem;color:var(--muted);background:var(--border);padding:2px 6px;border-radius:2px;}
-.asset-price{font-family:var(--sans);font-size:1.8rem;font-weight:800;line-height:1;margin-bottom:6px;letter-spacing:-0.02em;}
-.asset-change{font-size:0.72rem;padding:2px 6px;border-radius:2px;display:inline-block;margin-bottom:16px;}
-.asset-change.up{background:rgba(0,229,160,0.1);color:var(--accent);}
-.asset-change.dn{background:rgba(229,64,64,0.1);color:var(--danger);}
-.signal-badge{display:flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:3px;margin-bottom:12px;}
-.signal-icon{font-size:1.1rem;}
-.signal-text{font-family:var(--sans);font-size:0.85rem;font-weight:700;letter-spacing:0.08em;}
-.conf-row{display:flex;justify-content:space-between;font-size:0.65rem;color:var(--muted);margin-bottom:4px;}
-.conf-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:12px;}
-.conf-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 1.2s cubic-bezier(0.4,0,0.2,1);width:0%;}
-.factors{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.63rem;color:var(--muted);}
-.factor{display:flex;justify-content:space-between;background:var(--bg);padding:4px 7px;border-radius:2px;}
-.factor-val{color:var(--text);font-weight:700;}
-.factor-val.bull{color:var(--accent);}
-.factor-val.bear{color:var(--danger);}
-.factor-val.neu{color:var(--accent2);}
-.custom-section{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px;margin-bottom:28px;}
-.section-title{font-size:0.65rem;letter-spacing:0.25em;color:var(--muted);text-transform:uppercase;margin-bottom:14px;}
-.ticker-inputs{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.ticker-group{display:flex;flex-direction:column;gap:6px;}
-.ticker-label{font-size:0.62rem;color:var(--muted);letter-spacing:0.1em;}
-.ticker-input-row{display:flex;gap:8px;}
-.ticker-input{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:0.8rem;padding:8px 10px;border-radius:3px;text-transform:uppercase;outline:none;transition:border-color 0.2s;}
-.ticker-input:focus{border-color:var(--accent);}
-.ticker-input::placeholder{color:var(--muted);text-transform:none;}
-.btn-save{background:var(--accent);color:var(--bg);border:none;font-family:var(--mono);font-size:0.72rem;font-weight:700;padding:8px 14px;border-radius:3px;cursor:pointer;transition:opacity 0.2s;white-space:nowrap;}
-.btn-save:hover{opacity:0.85;}
-.bottom-bar{display:flex;justify-content:space-between;align-items:center;padding:14px 28px;border-top:1px solid var(--border);position:fixed;bottom:0;left:0;right:0;background:rgba(8,12,14,0.97);font-size:0.62rem;color:var(--muted);}
-.history-section{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:20px;margin-bottom:80px;}
-.history-table{width:100%;border-collapse:collapse;font-size:0.68rem;}
-.history-table th{text-align:left;color:var(--muted);letter-spacing:0.1em;padding:6px 10px;border-bottom:1px solid var(--border);}
-.history-table td{padding:7px 10px;border-bottom:1px solid rgba(26,37,48,0.5);}
+html{font-size:16px;}
+body{
+  background:var(--cream);
+  color:var(--black);
+  font-family:var(--mono);
+  min-height:100vh;
+  overflow-x:hidden;
+  line-height:1.7;
+}
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+    repeating-linear-gradient(90deg,transparent,transparent 120px,rgba(201,168,76,0.04) 120px,rgba(201,168,76,0.04) 121px),
+    repeating-linear-gradient(0deg,transparent,transparent 80px,rgba(201,168,76,0.03) 80px,rgba(201,168,76,0.03) 81px);
+  pointer-events:none;
+  z-index:0;
+}
+header{
+  position:sticky;
+  top:0;
+  z-index:100;
+  background:rgba(245,240,232,0.92);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  padding:18px 48px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.logo{
+  font-family:var(--serif);
+  font-size:1.1rem;
+  font-weight:300;
+  letter-spacing:0.35em;
+  color:var(--black);
+  text-transform:uppercase;
+}
+.logo em{font-style:italic;color:var(--gold);}
+.header-right{
+  display:flex;
+  align-items:center;
+  gap:20px;
+  font-size:0.68rem;
+  letter-spacing:0.12em;
+  color:var(--gray);
+  font-family:var(--mono);
+}
+.status-line{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.status-dot{
+  width:5px;height:5px;
+  border-radius:50%;
+  background:var(--up);
+  animation:gentle-pulse 3s ease-in-out infinite;
+}
+@keyframes gentle-pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+.main{
+  max-width:1100px;
+  margin:0 auto;
+  padding:48px 48px 80px;
+  position:relative;z-index:1;
+}
+.section-header{
+  display:flex;
+  align-items:baseline;
+  gap:16px;
+  margin-bottom:32px;
+  padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+.section-label{
+  font-family:var(--mono);
+  font-size:0.62rem;
+  letter-spacing:0.3em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+.gold-line{
+  flex:1;
+  height:1px;
+  background:linear-gradient(to right,var(--gold-light),transparent);
+}
+.custom-section{
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:32px 36px;
+  margin-bottom:48px;
+}
+.ticker-inputs{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.ticker-group{display:flex;flex-direction:column;gap:8px;}
+.ticker-label{
+  font-size:0.6rem;
+  letter-spacing:0.2em;
+  color:var(--muted);
+  text-transform:uppercase;
+}
+.ticker-input-row{display:flex;gap:0;}
+.ticker-input{
+  flex:1;
+  background:transparent;
+  border:1px solid var(--border);
+  border-right:none;
+  color:var(--black);
+  font-family:var(--mono);
+  font-size:0.82rem;
+  padding:10px 14px;
+  letter-spacing:0.05em;
+  outline:none;
+  transition:border-color 0.3s;
+}
+.ticker-input:focus{border-color:var(--gold);}
+.ticker-input::placeholder{color:var(--gray-light);letter-spacing:0.05em;}
+.btn-apply{
+  background:var(--black);
+  color:var(--cream);
+  border:1px solid var(--black);
+  font-family:var(--mono);
+  font-size:0.62rem;
+  letter-spacing:0.2em;
+  padding:10px 20px;
+  cursor:pointer;
+  text-transform:uppercase;
+  transition:background 0.25s,color 0.25s;
+}
+.btn-apply:hover{background:var(--gold);border-color:var(--gold);color:var(--black);}
+.assets{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:20px;
+  margin-bottom:48px;
+}
+.asset-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  padding:28px 30px 24px;
+  position:relative;
+  transition:border-color 0.4s;
+}
+.asset-card::after{
+  content:'';
+  position:absolute;
+  bottom:0;left:0;right:0;
+  height:1px;
+  background:linear-gradient(to right,transparent,var(--gold-light),transparent);
+  opacity:0;
+  transition:opacity 0.4s;
+}
+.asset-card:hover{border-color:var(--gold-light);}
+.asset-card:hover::after{opacity:1;}
+.asset-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  margin-bottom:20px;
+}
+.asset-name{
+  font-family:var(--serif);
+  font-size:1.05rem;
+  font-weight:400;
+  letter-spacing:0.1em;
+  color:var(--black);
+}
+.asset-ticker{
+  font-size:0.6rem;
+  letter-spacing:0.15em;
+  color:var(--muted);
+  background:var(--border);
+  padding:2px 8px;
+}
+.asset-price{
+  font-family:var(--serif);
+  font-size:2rem;
+  font-weight:300;
+  line-height:1;
+  letter-spacing:-0.02em;
+  margin-bottom:6px;
+  color:var(--black);
+}
+.asset-change{
+  font-size:0.72rem;
+  letter-spacing:0.05em;
+  display:inline-block;
+  margin-bottom:20px;
+}
+.asset-change.up{color:var(--up);}
+.asset-change.dn{color:var(--dn);}
+.signal-stripe{
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  padding:12px 0;
+  margin-bottom:16px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.signal-icon{
+  font-size:0.9rem;
+  opacity:0.7;
+}
+.signal-text{
+  font-family:var(--serif);
+  font-size:0.95rem;
+  font-weight:400;
+  letter-spacing:0.05em;
+  font-style:italic;
+}
+.conf-row{
+  display:flex;
+  justify-content:space-between;
+  font-size:0.62rem;
+  letter-spacing:0.12em;
+  color:var(--muted);
+  margin-bottom:5px;
+  text-transform:uppercase;
+}
+.conf-val{color:var(--black);}
+.conf-bar{
+  height:1px;
+  background:var(--border);
+  margin-bottom:16px;
+  overflow:hidden;
+}
+.conf-fill{
+  height:100%;
+  background:var(--gold);
+  transition:width 1.4s cubic-bezier(0.4,0,0.2,1);
+  width:0%;
+}
+.factors{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.factor{
+  display:flex;
+  justify-content:space-between;
+  font-size:0.62rem;
+  color:var(--muted);
+  padding:5px 8px;
+  border:1px solid transparent;
+  letter-spacing:0.04em;
+}
+.factor-val{color:var(--black);font-weight:700;}
+.factor-val.bull{color:var(--up);}
+.factor-val.bear{color:var(--dn);}
+.history-section{border-top:1px solid var(--border);padding-top:40px;margin-bottom:80px;}
+.history-table{width:100%;border-collapse:collapse;font-size:0.7rem;}
+.history-table th{
+  text-align:left;
+  color:var(--muted);
+  letter-spacing:0.2em;
+  font-weight:400;
+  font-size:0.6rem;
+  padding:8px 12px;
+  border-bottom:1px solid var(--border);
+  text-transform:uppercase;
+}
+.history-table td{
+  padding:10px 12px;
+  border-bottom:1px solid rgba(221,216,206,0.5);
+  color:var(--black);
+  letter-spacing:0.04em;
+}
 .history-table tr:last-child td{border-bottom:none;}
-.badge{padding:2px 7px;border-radius:2px;font-size:0.62rem;font-weight:700;}
-.badge-buy{background:rgba(0,229,160,0.1);color:var(--accent);}
-.badge-sell{background:rgba(229,64,64,0.1);color:var(--danger);}
-.badge-hold{background:rgba(74,96,112,0.3);color:var(--muted);}
-.badge-hit{background:rgba(0,229,160,0.15);color:var(--accent);}
-.badge-miss{background:rgba(229,64,64,0.15);color:var(--danger);}
-.loading{color:var(--muted);font-size:0.72rem;animation:blink 1s step-end infinite;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-@media(max-width:600px){header{padding:14px 16px;}.main{padding:16px;}.bottom-bar{padding:10px 16px;flex-direction:column;gap:4px;}.ticker-inputs{grid-template-columns:1fr;}}
+.badge{
+  padding:2px 8px;
+  font-size:0.6rem;
+  letter-spacing:0.1em;
+  font-weight:400;
+}
+.badge-buy{background:rgba(74,124,89,0.1);color:var(--up);border:1px solid rgba(74,124,89,0.3);}
+.badge-sell{background:rgba(139,58,58,0.08);color:var(--dn);border:1px solid rgba(139,58,58,0.25);}
+.badge-hold{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.badge-hit{color:var(--up);}
+.badge-miss{color:var(--dn);}
+.bottom-bar{
+  border-top:1px solid var(--border);
+  padding:16px 48px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:0.6rem;
+  letter-spacing:0.15em;
+  color:var(--muted);
+  text-transform:uppercase;
+  background:rgba(245,240,232,0.9);
+}
+.loading{
+  color:var(--muted);
+  font-size:0.72rem;
+  letter-spacing:0.1em;
+  font-family:var(--serif);
+  font-style:italic;
+  animation:gentle-pulse 2s ease-in-out infinite;
+}
+@media(max-width:640px){
+  header{padding:14px 20px;}
+  .main{padding:24px 20px 80px;}
+  .bottom-bar{padding:12px 20px;flex-direction:column;gap:4px;text-align:center;}
+  .ticker-inputs{grid-template-columns:1fr;}
+  .assets{grid-template-columns:1fr;}
+}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">SIGNAL <span>// 資產預警</span></div>
+  <div class="logo">Signal <em>//</em> 資產預警</div>
   <div class="header-right">
-    <div class="status-dot"></div>
-    <span id="hdr-time">--:--:--</span>
+    <div class="status-line">
+      <div class="status-dot"></div>
+      <span id="hdr-time">--:--:--</span>
+    </div>
     <span id="hdr-status">連線中</span>
   </div>
 </header>
 <div class="main">
   <div class="custom-section">
-    <div class="section-title">自訂追蹤標的</div>
+    <div class="section-header">
+      <span class="section-label">自訂追蹤</span>
+      <div class="gold-line"></div>
+    </div>
     <div class="ticker-inputs">
       <div class="ticker-group">
-        <div class="ticker-label">台股代碼（如 2330.TW）</div>
+        <div class="ticker-label">台股代碼</div>
         <div class="ticker-input-row">
           <input class="ticker-input" id="tw-input" type="text" placeholder="例：2330.TW" maxlength="12">
-          <button class="btn-save" onclick="saveTickers()">套用</button>
+          <button class="btn-apply" onclick="saveTickers()">套用</button>
         </div>
       </div>
       <div class="ticker-group">
-        <div class="ticker-label">美股代碼（如 NVDA）</div>
+        <div class="ticker-label">美股代碼</div>
         <div class="ticker-input-row">
           <input class="ticker-input" id="us-input" type="text" placeholder="例：NVDA" maxlength="10">
-          <button class="btn-save" onclick="saveTickers()">套用</button>
+          <button class="btn-apply" onclick="saveTickers()">套用</button>
         </div>
       </div>
     </div>
   </div>
+  <div class="section-header">
+    <span class="section-label">市場訊號</span>
+    <div class="gold-line"></div>
+  </div>
   <div class="assets" id="assets-grid">
-    <div class="asset-card"><div class="loading">載入黃金數據...</div></div>
-    <div class="asset-card"><div class="loading">載入白銀數據...</div></div>
-    <div class="asset-card"><div class="loading">載入台股數據...</div></div>
-    <div class="asset-card"><div class="loading">載入美股數據...</div></div>
+    <div class="asset-card"><div class="loading">載入黃金數據</div></div>
+    <div class="asset-card"><div class="loading">載入白銀數據</div></div>
+    <div class="asset-card"><div class="loading">載入台股數據</div></div>
+    <div class="asset-card"><div class="loading">載入美股數據</div></div>
   </div>
   <div class="history-section">
-    <div class="section-title">近期信號紀錄（勝率追蹤）</div>
+    <div class="section-header">
+      <span class="section-label">近期記錄</span>
+      <div class="gold-line"></div>
+    </div>
     <table class="history-table">
-      <thead><tr><th>時間</th><th>標的</th><th>信號</th><th>信心度</th><th>進場價</th><th>5日後</th><th>結果</th></tr></thead>
-      <tbody id="history-tbody"><tr><td colspan="7" style="color:var(--muted);padding:16px 10px">載入歷史紀錄...</td></tr></tbody>
+      <thead><tr>
+        <th>時間</th><th>標的</th><th>信號</th><th>信心</th>
+        <th>進場價</th><th>5日後</th><th>結果</th>
+      </tr></thead>
+      <tbody id="history-tbody">
+        <tr><td colspan="7" style="color:var(--muted);padding:20px 12px;font-family:var(--serif);font-style:italic">載入歷史紀錄</td></tr>
+      </tbody>
     </table>
   </div>
 </div>
 <div class="bottom-bar">
   <span>SIGNAL v5.0 · XGBoost+COT</span>
   <span id="last-update">最後更新：--</span>
-  <span>⚠️ 僅供參考，非投資建議</span>
+  <span>僅供參考，非投資建議</span>
 </div>
 <script>
 const S3='https://gld-mms-data-richtrong.s3.ap-northeast-1.amazonaws.com/data.json';
 const LS_TW='signal_tw_ticker',LS_US='signal_us_ticker';
-const SIG={'STRONG_BUY':{icon:'🚀',text:'強力買進',color:'#00e5a0'},'BUY':{icon:'📈',text:'買進',color:'#00e5a0'},'PRE_BUY':{icon:'👀',text:'準備買進',color:'#e5a000'},'HOLD':{icon:'⏳',text:'觀望',color:'#4a6070'},'SELL':{icon:'📉',text:'賣出',color:'#e54040'},'STRONG_SELL':{icon:'🔴',text:'強力賣出',color:'#e54040'}};
-function getSig(s){if(s>=80)return'STRONG_BUY';if(s>=65)return'BUY';if(s>=55)return'PRE_BUY';if(s>=45)return'HOLD';if(s>=30)return'SELL';return'STRONG_SELL';}
-function fmtPrice(p,sym){if(!p)return'--';if(sym&&sym.includes('.TW'))return'NT$'+p.toLocaleString();if(p>100)return'$'+p.toLocaleString(undefined,{maximumFractionDigits:2});return'$'+p.toFixed(2);}
+const SIG={
+  STRONG_BUY:{icon:'▲',text:'強力買進',color:'#4a7c59'},
+  BUY:{icon:'△',text:'買進',color:'#4a7c59'},
+  PRE_BUY:{icon:'≈',text:'準備買進',color:'#c9a84c'},
+  HOLD:{icon:'—',text:'觀望',color:'#8a8279'},
+  SELL:{icon:'▽',text:'賣出',color:'#8b3a3a'},
+  STRONG_SELL:{icon:'▼',text:'強力賣出',color:'#8b3a3a'}
+};
+function getSig(s){
+  if(s>=80)return'STRONG_BUY';
+  if(s>=65)return'BUY';
+  if(s>=55)return'PRE_BUY';
+  if(s>=45)return'HOLD';
+  if(s>=30)return'SELL';
+  return'STRONG_SELL';
+}
+function fmtPrice(p,sym){
+  if(!p)return'--';
+  if(sym&&sym.includes('.TW'))return'NT$'+p.toLocaleString();
+  if(p>100)return'$'+p.toLocaleString(undefined,{maximumFractionDigits:2});
+  return'$'+p.toFixed(2);
+}
 function renderCard(id,d){
-  const score=d.score??50,sig=SIG[getSig(score)]||SIG['HOLD'],ch=d.change??0,chCls=ch>=0?'up':'dn',chSign=ch>=0?'+':'';
-  const fx=Object.entries(d.factors||{}).map(([k,v])=>{let c='neu';if(typeof v==='number'){c=v>0?'bull':v<0?'bear':'neu';}else if(/buy|bull|up|multi|long/i.test(String(v)))c='bull';else if(/sell|bear|dn|short/i.test(String(v)))c='bear';return`<div class="factor"><span>${k}</span><span class="factor-val ${c}">${v}</span></div>`;}).join('');
-  return`<div class="asset-card" style="--signal-color:${sig.color}"><div class="asset-header"><div><div class="asset-name">${d.name||id}</div></div><div class="asset-ticker">${d.ticker||id}</div></div><div class="asset-price">${fmtPrice(d.price,d.ticker)}</div><div class="asset-change ${chCls}">${chSign}${ch?.toFixed(2)}%</div><div class="signal-badge" style="border-color:${sig.color}22;background:${sig.color}08"><span class="signal-icon">${sig.icon}</span><span class="signal-text" style="color:${sig.color}">${sig.text}</span></div><div class="conf-row"><span>信心度</span><span style="color:var(--text)">${score}%</span></div><div class="conf-bar"><div class="conf-fill" style="width:${score}%;background:${sig.color}"></div></div><div class="factors">${fx}</div></div>`;}
-function renderHistory(rows){if(!rows||!rows.length)return'<tr><td colspan="7" style="color:var(--muted);padding:16px 10px">暫無歷史紀錄</td></tr>';return rows.map(r=>{const sc=SIG[r.signal]||SIG['HOLD'],bc=r.signal.includes('BUY')?'badge-buy':r.signal.includes('SELL')?'badge-sell':'badge-hold',rc=r.result==='HIT'?'badge-hit':r.result==='MISS'?'badge-miss':'badge-hold';return`<tr><td>${r.time||'--'}</td><td>${r.ticker||'--'}</td><td><span class="badge ${bc}">${sc.text}</span></td><td>${r.confidence||'--'}%</td><td>${r.entry?'$'+r.entry:'--'}</td><td>${r.exit5d?(r.exit5d>0?'+':'')+r.exit5d+'%':'進行中'}</td><td>${r.result?'<span class="badge '+rc+'">'+(r.result==='HIT'?'✓ 命中':'✗ 失誤')+'</span>':'--'}</td></tr>`;}).join('');}
+  const score=d.score??50;
+  const sig=SIG[getSig(score)]||SIG['HOLD'];
+  const ch=d.change??0;
+  const chCls=ch>=0?'up':'dn';
+  const chSign=ch>=0?'+':'';
+  const fx=Object.entries(d.factors||{}).map(([k,v])=>{
+    let c='neu';
+    if(typeof v==='number'){c=v>0?'bull':v<0?'bear':'neu';}
+    else if(/buy|bull|up|multi|long/i.test(String(v)))c='bull';
+    else if(/sell|bear|dn|short/i.test(String(v)))c='bear';
+    return`<div class="factor"><span>${k}</span><span class="factor-val ${c}">${v}</span></div>`;
+  }).join('');
+  return`<div class="asset-card">
+    <div class="asset-top">
+      <div class="asset-name">${d.name||id}</div>
+      <div class="asset-ticker">${d.ticker||id}</div>
+    </div>
+    <div class="asset-price">${fmtPrice(d.price,d.ticker)}</div>
+    <div class="asset-change ${chCls}">${chSign}${ch?.toFixed(2)}%</div>
+    <div class="signal-stripe" style="border-color:${sig.color}22">
+      <span class="signal-icon" style="color:${sig.color}">${sig.icon}</span>
+      <span class="signal-text" style="color:${sig.color}">${sig.text}</span>
+    </div>
+    <div class="conf-row"><span>信心度</span><span class="conf-val">${score}%</span></div>
+    <div class="conf-bar"><div class="conf-fill" style="width:${score}%;background:${sig.color}"></div></div>
+    <div class="factors">${fx}</div>
+  </div>`;
+}
+function renderHistory(rows){
+  if(!rows||!rows.length)return'<tr><td colspan="7" style="color:var(--muted);padding:20px 12px;font-family:var(--serif);font-style:italic">暫無歷史記錄</td></tr>';
+  return rows.map(r=>{
+    const sc=SIG[r.signal]||SIG['HOLD'];
+    const bc=r.signal.includes('BUY')?'badge-buy':r.signal.includes('SELL')?'badge-sell':'badge-hold';
+    const rc=r.result==='HIT'?'badge-hit':r.result==='MISS'?'badge-miss':'';
+    const resultText=r.result==='HIT'?'命中':r.result==='MISS'?'失誤':'--';
+    return`<tr>
+      <td>${r.time||'--'}</td>
+      <td>${r.ticker||'--'}</td>
+      <td><span class="badge ${bc}">${sc.text}</span></td>
+      <td>${r.confidence||'--'}%</td>
+      <td>${r.entry?'$'+r.entry:'--'}</td>
+      <td>${r.exit5d?(r.exit5d>0?'+':'')+r.exit5d+'%':'進行中'}</td>
+      <td>${r.result?`<span class="${rc}">${resultText}</span>`:'--'}</td>
+    </tr>`;
+  }).join('');
+}
 function getTWTicker(){return localStorage.getItem(LS_TW)||'2330.TW';}
 function getUSTicker(){return localStorage.getItem(LS_US)||'NVDA';}
-function saveTickers(){const tw=document.getElementById('tw-input').value.trim().toUpperCase(),us=document.getElementById('us-input').value.trim().toUpperCase();if(tw)localStorage.setItem(LS_TW,tw.includes('.TW')?tw:tw+'.TW');if(us)localStorage.setItem(LS_US,us);update();}
-async function update(){try{const res=await fetch(S3+'?t='+Date.now());if(!res.ok)throw new Error(res.status);const d=await res.json();
-const twT=getTWTicker(),usT=getUSTicker();
-const cards=[d.assets?.gold||{name:'黃金',ticker:'GC=F',score:d.score,price:d.gold?.price,change:d.gold?.change,factors:{'XGBoost':(d.score||0)+'%','ETF流向':d.smart_money?.etf_flow||'--','COT':d.smart_money?.cot_report||'--'}},d.assets?.silver||{name:'白銀',ticker:'SI=F',score:null,price:null,change:null,factors:{}},{name:twT.replace('.TW',''),ticker:twT,score:d.assets?.tw?.score||null,price:d.assets?.tw?.price||null,change:d.assets?.tw?.change||null,factors:d.assets?.tw?.factors||{}},{name:usT,ticker:usT,score:d.assets?.us?.score||null,price:d.assets?.us?.price||null,change:d.assets?.us?.change||null,factors:d.assets?.us?.factors||{}}];
-document.getElementById('assets-grid').innerHTML=cards.map((c,i)=>renderCard(i,c)).join('');
-setTimeout(()=>{document.querySelectorAll('.conf-fill').forEach(el=>{const w=el.style.width;el.style.width='0%';setTimeout(()=>{el.style.width=w;},50);});},100);
-if(d.history)document.getElementById('history-tbody').innerHTML=renderHistory(d.history);
-document.getElementById('hdr-status').textContent='即時';
-document.getElementById('last-update').textContent='最後更新：'+new Date(d.timestamp).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-}catch(e){document.getElementById('hdr-status').textContent='連線失敗';console.error(e);}}
-function initInputs(){document.getElementById('tw-input').value=getTWTicker();document.getElementById('us-input').value=getUSTicker();}
-function tick(){document.getElementById('hdr-time').textContent=new Date().toLocaleTimeString('zh-TW',{hour12:false});}
+function saveTickers(){
+  const tw=document.getElementById('tw-input').value.trim().toUpperCase();
+  const us=document.getElementById('us-input').value.trim().toUpperCase();
+  if(tw)localStorage.setItem(LS_TW,tw.includes('.TW')?tw:tw+'.TW');
+  if(us)localStorage.setItem(LS_US,us);
+  update();
+}
+async function update(){
+  try{
+    const res=await fetch(S3+'?t='+Date.now());
+    if(!res.ok)throw new Error(res.status);
+    const d=await res.json();
+    const twT=getTWTicker(),usT=getUSTicker();
+    const cards=[
+      d.assets?.gold||{name:'黃金',ticker:'GC=F',score:d.score,price:d.gold?.price,change:d.gold?.change,factors:{'XGBoost':(d.score||0)+'%','ETF流向':d.smart_money?.etf_flow||'--','COT':d.smart_money?.cot_report||'--'}},
+      d.assets?.silver||{name:'白銀',ticker:'SI=F',score:null,price:null,change:null,factors:{}},
+      {name:twT.replace('.TW',''),ticker:twT,score:d.assets?.tw?.score||null,price:d.assets?.tw?.price||null,change:d.assets?.tw?.change||null,factors:d.assets?.tw?.factors||{}},
+      {name:usT,ticker:usT,score:d.assets?.us?.score||null,price:d.assets?.us?.price||null,change:d.assets?.us?.change||null,factors:d.assets?.us?.factors||{}}
+    ];
+    document.getElementById('assets-grid').innerHTML=cards.map((c,i)=>renderCard(i,c)).join('');
+    setTimeout(()=>{
+      document.querySelectorAll('.conf-fill').forEach(el=>{
+        const w=el.style.width;
+        el.style.width='0%';
+        setTimeout(()=>{el.style.width=w;},80);
+      });
+    },120);
+    if(d.history)document.getElementById('history-tbody').innerHTML=renderHistory(d.history);
+    document.getElementById('hdr-status').textContent='即時';
+    document.getElementById('last-update').textContent='最後更新：'+new Date(d.timestamp).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    document.getElementById('hdr-status').textContent='連線失敗';
+    console.error(e);
+  }
+}
+function initInputs(){
+  document.getElementById('tw-input').value=getTWTicker();
+  document.getElementById('us-input').value=getUSTicker();
+}
+function tick(){
+  document.getElementById('hdr-time').textContent=new Date().toLocaleTimeString('zh-TW',{hour12:false});
+}
 initInputs();update();setInterval(update,60000);setInterval(tick,1000);tick();
 </script>
 </body>
