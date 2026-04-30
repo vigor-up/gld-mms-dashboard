@@ -4,336 +4,461 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#ffffff">
-<title>SIGNAL · 黃金交易系統</title>
-<meta name="description" content="GLD-MMS Top-10% AI 黃金交易系統 · XGBoost + COT + 多時框共識 · 即時信號 + Bark 推播">
+<title>SIGNAL · 黃金 AI 交易系統</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:        #f7f8fa;
+    --bg:        #ffffff;
     --surface:   #ffffff;
-    --surface-2: #f0f2f7;
-    --border:    #e2e6ee;
-    --border-soft: #eef0f5;
-    --txt:       #0f1729;
-    --txt-2:     #475065;
-    --muted:     #8b94a8;
-    --buy:       #00a868;
-    --buy-bg:    #e8f7ef;
-    --buy-border:#a8e0c2;
-    --buy-deep:  #00633e;
-    --sell:      #e02d4a;
-    --sell-bg:   #fdebee;
-    --sell-border:#f5b8c2;
-    --sell-deep: #8a0a23;
-    --wait:      #b8860b;
-    --wait-bg:   #fdf6e3;
-    --wait-border:#e8d49a;
-    --wait-deep: #6b4f0a;
+    --hairline:  #e8eaed;
+    --hairline-strong: #d3d6dc;
+    --ink:       #0a0a0a;
+    --ink-2:     #5f6369;
+    --muted:     #9aa0a6;
+    --buy:       #00873d;
+    --buy-deep:  #00582a;
+    --buy-bg:    #d4f3e0;
+    --buy-tint:  #f0fbf4;
+    --sell:      #d11d3a;
+    --sell-deep: #8a0d22;
+    --sell-bg:   #ffd8de;
+    --sell-tint: #fff5f6;
+    --wait:      #b88500;
+    --wait-deep: #6b4d00;
+    --wait-bg:   #fbe9b3;
+    --wait-tint: #fefaee;
     --gold:      #c9a227;
-    --shadow-sm: 0 1px 2px rgba(15,23,41,0.04), 0 1px 3px rgba(15,23,41,0.06);
-    --shadow-md: 0 4px 12px rgba(15,23,41,0.06), 0 2px 4px rgba(15,23,41,0.04);
-    --shadow-lg: 0 10px 30px rgba(15,23,41,0.08), 0 4px 12px rgba(15,23,41,0.05);
   }
 
   * { -webkit-tap-highlight-color: transparent; }
   html, body {
     background: var(--bg);
-    color: var(--txt);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-feature-settings: "cv11", "ss01", "ss03";
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv11", "ss01";
   }
-  .mono { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace; font-variant-numeric: tabular-nums; }
-  .surface { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow-sm); }
-  .surface-flat { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 12px; }
-  .badge { font-size: 11px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--txt-2); background: var(--surface); font-weight: 500; }
-  .badge-live { background: var(--buy-bg); color: var(--buy-deep); border-color: var(--buy-border); }
-  .badge-stale { background: var(--wait-bg); color: var(--wait-deep); border-color: var(--wait-border); }
-  .badge-offline { background: var(--sell-bg); color: var(--sell-deep); border-color: var(--sell-border); }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 
-  /* ═════════ 主訊號燈 ═════════ */
-  .verdict {
-    border-radius: 24px;
-    padding: 28px 24px;
-    border: 2px solid;
-    position: relative;
+  /* ═════════ 主訊號卡（強烈對比）═════════ */
+  .verdict-card {
+    border-radius: 28px;
+    padding: 0;
+    border: 3px solid;
     overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
   }
-  .verdict.buy  { background: var(--buy-bg);  border-color: var(--buy-border);  }
-  .verdict.sell { background: var(--sell-bg); border-color: var(--sell-border); }
-  .verdict.wait { background: var(--wait-bg); border-color: var(--wait-border); }
+  .verdict-card.buy  { border-color: var(--buy);  background: var(--buy-tint);  }
+  .verdict-card.sell { border-color: var(--sell); background: var(--sell-tint); }
+  .verdict-card.wait { border-color: var(--wait); background: var(--wait-tint); }
 
-  .verdict::before {
-    content: "";
-    position: absolute; inset: 0;
-    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.6) 0%, transparent 60%);
+  /* 強調帶 - 上方 3px 粗線條 */
+  .verdict-card .accent-bar {
+    height: 6px;
+    width: 100%;
+  }
+  .verdict-card.buy  .accent-bar { background: linear-gradient(90deg, var(--buy)  0%, var(--buy-deep)  100%); }
+  .verdict-card.sell .accent-bar { background: linear-gradient(90deg, var(--sell) 0%, var(--sell-deep) 100%); }
+  .verdict-card.wait .accent-bar { background: linear-gradient(90deg, var(--wait) 0%, var(--wait-deep) 100%); }
+
+  /* 大型箭頭 SVG */
+  .arrow-svg {
+    width: 96px;
+    height: 96px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+  }
+  @media (min-width: 640px) {
+    .arrow-svg { width: 120px; height: 120px; }
+  }
+
+  /* 脈動環 */
+  .pulse-ring {
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 3px solid;
+    opacity: 0;
     pointer-events: none;
   }
-
-  .verdict-dot {
-    width: 84px; height: 84px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 38px; font-weight: 900;
-    flex-shrink: 0;
-    box-shadow: var(--shadow-md);
-  }
-  .verdict-dot.buy  { background: var(--buy);  color: #fff; }
-  .verdict-dot.sell { background: var(--sell); color: #fff; }
-  .verdict-dot.wait { background: var(--wait); color: #fff; }
-
-  /* 脈動指示燈（買賣時才動，wait 用緩動） */
-  .pulse-buy   { animation: pulse-buy   2.4s cubic-bezier(0.4,0,0.6,1) infinite; }
-  .pulse-sell  { animation: pulse-sell  2.4s cubic-bezier(0.4,0,0.6,1) infinite; }
-  .pulse-wait  { animation: pulse-wait  3.5s ease-in-out infinite; }
-  @keyframes pulse-buy {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(0,168,104,0.45), var(--shadow-md); }
-    50%      { box-shadow: 0 0 0 16px rgba(0,168,104,0),  var(--shadow-md); }
-  }
-  @keyframes pulse-sell {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(224,45,74,0.45),  var(--shadow-md); }
-    50%      { box-shadow: 0 0 0 16px rgba(224,45,74,0),  var(--shadow-md); }
-  }
-  @keyframes pulse-wait {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(184,134,11,0.25), var(--shadow-md); }
-    50%      { box-shadow: 0 0 0 12px rgba(184,134,11,0), var(--shadow-md); }
+  .pulse-ring.active { animation: pulse-ring 2s cubic-bezier(0,0,0.2,1) infinite; }
+  @keyframes pulse-ring {
+    0%   { transform: scale(0.85); opacity: 0.7; }
+    100% { transform: scale(1.4);  opacity: 0; }
   }
 
-  /* ═════════ Action Chips ═════════ */
-  .chip {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 5px 11px; border-radius: 999px;
-    font-size: 12px; font-weight: 600;
-    background: rgba(255,255,255,0.7);
-    border: 1px solid rgba(255,255,255,0.9);
-    backdrop-filter: blur(8px);
-    color: var(--txt);
+  /* 閃電 icon for high-confidence */
+  .bolt-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    animation: bolt-pulse 1.5s ease-in-out infinite;
+  }
+  .bolt-badge.buy  { background: linear-gradient(135deg, var(--buy)  0%, var(--buy-deep)  100%); }
+  .bolt-badge.sell { background: linear-gradient(135deg, var(--sell) 0%, var(--sell-deep) 100%); }
+  @keyframes bolt-pulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.06); }
+  }
+  .bolt-badge svg {
+    width: 14px;
+    height: 14px;
+    animation: bolt-flash 0.8s ease-in-out infinite;
+  }
+  @keyframes bolt-flash {
+    0%, 100% { opacity: 1; transform: rotate(-3deg); }
+    50%      { opacity: 0.7; transform: rotate(3deg); }
   }
 
-  /* ═════════ 進度條 ═════════ */
-  .pbar { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
-  .pbar-fill { height: 100%; transition: width 0.7s cubic-bezier(0.4,0,0.2,1); border-radius: 999px; }
+  /* 信心條 */
+  .conf-bar {
+    height: 14px;
+    background: rgba(0,0,0,0.06);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .conf-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+  .conf-fill::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-  /* ═════════ 訊號明細表 ═════════ */
-  table.tbl-sig { width: 100%; border-collapse: collapse; font-size: 13px; }
-  table.tbl-sig th { text-align: left; color: var(--muted); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--border-soft); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-  table.tbl-sig td { padding: 10px; border-bottom: 1px solid var(--border-soft); }
-  table.tbl-sig tr:last-child td { border-bottom: none; }
+  /* 一般卡片 */
+  .card { background: var(--surface); border: 1px solid var(--hairline); border-radius: 16px; }
+  .card-flat { background: #fafbfc; border: 1px solid var(--hairline); border-radius: 12px; }
 
-  /* ═════════ 摺疊 ═════════ */
+  .h-eyebrow { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.14em; }
+  .h-section { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; }
+
+  /* 進度條 */
+  .pbar { height: 8px; background: #f0f1f3; border-radius: 999px; overflow: hidden; }
+  .pbar-fill { height: 100%; border-radius: 999px; transition: width 0.7s cubic-bezier(0.4,0,0.2,1); }
+
+  /* 訊號表 */
+  table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.tbl th { text-align: left; color: var(--muted); font-weight: 600; padding: 8px 8px; border-bottom: 1px solid var(--hairline); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+  table.tbl td { padding: 11px 8px; border-bottom: 1px solid #f4f5f7; }
+  table.tbl tr:last-child td { border-bottom: none; }
+
+  /* 摺疊箭頭 */
   details > summary { list-style: none; cursor: pointer; user-select: none; }
   details > summary::-webkit-details-marker { display: none; }
   .chev { transition: transform 0.2s ease; display: inline-block; }
   details[open] .chev { transform: rotate(90deg); }
 
-  /* ═════════ 星星 ═════════ */
-  .star { color: rgba(0,0,0,0.15); font-size: 13px; }
-  .star.on { color: var(--gold); }
-
-  /* ═════════ 載入骨架 ═════════ */
-  .sk { background: linear-gradient(90deg, var(--surface-2) 0%, #f7f8fa 50%, var(--surface-2) 100%); background-size: 200% 100%; animation: sk 1.4s infinite; border-radius: 4px; }
+  /* 載入骨架 */
+  .sk { background: linear-gradient(90deg, #f0f1f3 0%, #f7f8fa 50%, #f0f1f3 100%); background-size: 200% 100%; animation: sk 1.4s infinite; border-radius: 4px; }
   @keyframes sk { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-  /* ═════════ 字級系統 ═════════ */
-  .h-display { font-size: 32px; font-weight: 900; letter-spacing: -0.02em; line-height: 1.1; }
-  @media (min-width: 768px) { .h-display { font-size: 44px; } }
-  .h-section { font-size: 14px; font-weight: 700; color: var(--txt); letter-spacing: -0.01em; }
-  .h-eyebrow { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; }
+  /* badge */
+  .badge {
+    font-size: 11px; padding: 4px 10px; border-radius: 999px;
+    border: 1px solid var(--hairline-strong); color: var(--ink-2);
+    background: #fff; font-weight: 600;
+  }
+  .badge.live { background: var(--buy-bg); color: var(--buy-deep); border-color: transparent; }
+  .badge.stale { background: var(--wait-bg); color: var(--wait-deep); border-color: transparent; }
+  .badge.offline { background: var(--sell-bg); color: var(--sell-deep); border-color: transparent; }
 
-  /* iOS safe area */
+  /* 強調訊號 chip */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .pill.buy  { background: var(--buy-bg);  color: var(--buy-deep); }
+  .pill.sell { background: var(--sell-bg); color: var(--sell-deep); }
+  .pill.wait { background: var(--wait-bg); color: var(--wait-deep); }
+
   @supports (padding: env(safe-area-inset-bottom)) {
-    .safe-bottom { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+    .safe-bottom { padding-bottom: max(20px, env(safe-area-inset-bottom)); }
   }
 </style>
 </head>
 <body>
 
-<!-- ════════ 資料注入點 (請勿刪除) ════════ -->
+<!-- ════════ 資料注入點 ════════ -->
 <script id="data-source">const AUTO_DATA = null;</script>
-<!-- ═══════════════════════════════════════ -->
 
-<div class="max-w-3xl mx-auto px-4 pt-5 pb-8 safe-bottom">
+<!-- ════════ 共用 SVG 圖示 ════════ -->
+<svg style="display:none;">
+  <defs>
+    <!-- 大箭頭：UP -->
+    <symbol id="ico-up" viewBox="0 0 100 100">
+      <path d="M50 12 L88 60 L66 60 L66 88 L34 88 L34 60 L12 60 Z" fill="currentColor"/>
+    </symbol>
+    <!-- 大箭頭：DOWN -->
+    <symbol id="ico-dn" viewBox="0 0 100 100">
+      <path d="M50 88 L12 40 L34 40 L34 12 L66 12 L66 40 L88 40 Z" fill="currentColor"/>
+    </symbol>
+    <!-- 等號（觀望）-->
+    <symbol id="ico-wait" viewBox="0 0 100 100">
+      <rect x="18" y="34" width="64" height="12" rx="3" fill="currentColor"/>
+      <rect x="18" y="54" width="64" height="12" rx="3" fill="currentColor"/>
+    </symbol>
+    <!-- 閃電 -->
+    <symbol id="ico-bolt" viewBox="0 0 24 24">
+      <path d="M14 2 L4 14 L11 14 L9 22 L20 9 L13 9 L14 2 Z" fill="currentColor" stroke="currentColor" stroke-width="0.5" stroke-linejoin="round"/>
+    </symbol>
+    <!-- 鈴鐺 -->
+    <symbol id="ico-bell" viewBox="0 0 24 24">
+      <path d="M12 2 C9 2 7 4 7 7 L7 11 C7 13 5 15 5 17 L19 17 C19 15 17 13 17 11 L17 7 C17 4 15 2 12 2 Z M10 19 C10 20 11 21 12 21 C13 21 14 20 14 19 Z" fill="currentColor"/>
+    </symbol>
+    <!-- 趨勢圖示 -->
+    <symbol id="ico-trend-up" viewBox="0 0 24 24">
+      <path d="M3 17 L9 11 L13 15 L21 7 M21 7 L21 13 M21 7 L15 7" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="ico-trend-dn" viewBox="0 0 24 24">
+      <path d="M3 7 L9 13 L13 9 L21 17 M21 17 L21 11 M21 17 L15 17" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="ico-trend-flat" viewBox="0 0 24 24">
+      <path d="M3 12 L21 12" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="max-w-3xl mx-auto px-4 pt-5 safe-bottom">
 
   <!-- ─── Header ─── -->
   <header class="flex items-center justify-between mb-5">
     <div class="flex items-center gap-2.5">
       <div class="w-9 h-9 rounded-xl flex items-center justify-center font-black text-base"
-           style="background: linear-gradient(135deg, #d4af37, #b8860b); color:#fff; box-shadow: var(--shadow-sm);">G</div>
+           style="background: linear-gradient(135deg, #d4af37, #a8830a); color:#fff; box-shadow: 0 2px 6px rgba(168,131,10,0.25);">G</div>
       <div>
-        <div class="text-[15px] font-bold tracking-tight leading-tight">SIGNAL</div>
-        <div class="text-[10px] text-[var(--muted)] mt-0.5">v6.0 · XGBoost + COT</div>
+        <div class="text-[15px] font-bold tracking-tight">SIGNAL <span class="text-[var(--muted)] text-[10px] ml-0.5 font-mono">v6</span></div>
+        <div class="text-[10px] text-[var(--muted)] -mt-0.5">XGBoost · COT · 多時框共識</div>
       </div>
     </div>
     <div class="flex items-center gap-1.5">
       <span id="conn-badge" class="badge">● 載入中</span>
-      <span id="bark-badge" class="badge" style="display:none;">📱 推播已啟用</span>
     </div>
   </header>
 
   <!-- ═════════ 第一層：主訊號 ═════════ -->
-  <section id="verdict" class="verdict wait mb-4">
-    <div class="flex items-start gap-4">
-      <div id="verdict-dot" class="verdict-dot wait pulse-wait">?</div>
-      <div class="flex-1 min-w-0">
-        <div class="h-eyebrow mb-1.5">當前建議</div>
-        <h1 id="verdict-title" class="h-display">先觀望</h1>
-        <div class="flex flex-wrap items-center gap-1.5 mt-3">
-          <span id="verdict-confidence" class="chip">信心 <span class="ml-0.5 mono font-bold">--</span></span>
-          <span id="verdict-stars" class="chip">
-            <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
-          </span>
+  <section id="verdict" class="verdict-card wait mb-4">
+    <div class="accent-bar"></div>
+    <div class="p-5 sm:p-7">
+      <div class="flex items-start gap-5">
+        <!-- 大箭頭 + 脈動環 -->
+        <div class="relative flex items-center justify-center" style="margin-top: -4px;">
+          <svg id="verdict-arrow" class="arrow-svg" style="color: var(--wait);">
+            <use href="#ico-wait"/>
+          </svg>
+          <div id="pulse-ring" class="pulse-ring" style="border-color: var(--wait);"></div>
+        </div>
+
+        <!-- 標題與信心 -->
+        <div class="flex-1 min-w-0">
+          <div class="h-eyebrow mb-1.5">當前建議</div>
+          <h1 id="verdict-title" class="text-[34px] sm:text-[44px] font-black leading-[1.05] tracking-tight">先觀望</h1>
+
+          <!-- 高信心閃電徽章（≥80% 顯示） -->
+          <div id="bolt-row" class="mt-2.5" style="display:none;">
+            <span id="bolt-badge" class="bolt-badge buy">
+              <svg><use href="#ico-bolt"/></svg>
+              高信心訊號 · 已推播
+            </span>
+          </div>
+
+          <!-- 信心條 -->
+          <div class="mt-3.5">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-[11px] font-semibold text-[var(--ink-2)] uppercase tracking-wider">AI 信心</span>
+              <span id="conf-num" class="mono font-extrabold text-[15px]">--</span>
+            </div>
+            <div class="conf-bar">
+              <div id="conf-fill" class="conf-fill" style="width:0%; background: var(--wait);"></div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- 黃金價在卡片內，避免擠到主訊號 -->
-    <div class="mt-5 pt-4 border-t border-white/60 flex items-end justify-between gap-3">
-      <div>
-        <div class="h-eyebrow">黃金期貨 GC=F</div>
-        <div class="flex items-baseline gap-2 mt-0.5">
-          <span id="gold-price" class="text-2xl md:text-3xl font-bold mono">--</span>
-          <span id="gold-change" class="text-sm font-semibold mono">--</span>
+      <!-- 黃金價格 + 市況（底部資訊條） -->
+      <div class="mt-5 pt-4 border-t-2 grid grid-cols-2 gap-3" style="border-color: rgba(0,0,0,0.08);">
+        <div>
+          <div class="h-eyebrow mb-1">黃金期貨 GC=F</div>
+          <div class="flex items-baseline gap-1.5">
+            <span id="gold-price" class="text-2xl font-extrabold mono">--</span>
+            <span id="gold-change" class="text-sm font-bold mono">--</span>
+          </div>
+        </div>
+        <div class="text-right">
+          <div class="h-eyebrow mb-1">市場狀態</div>
+          <div class="flex items-center justify-end gap-1.5 mt-0.5">
+            <svg id="regime-icon" class="w-4 h-4" style="color: var(--muted);"><use href="#ico-trend-flat"/></svg>
+            <span id="regime-text" class="text-sm font-bold">--</span>
+          </div>
         </div>
       </div>
-      <div class="text-right">
-        <div class="h-eyebrow">市況</div>
-        <div id="verdict-regime" class="text-sm font-semibold mt-0.5">--</div>
-      </div>
-    </div>
 
-    <!-- 白話解釋 -->
-    <div class="mt-4 pt-4 border-t border-white/60">
-      <p id="verdict-plain" class="text-[13px] leading-relaxed text-[var(--txt-2)]">
-        <span class="sk inline-block w-3/4 h-4"></span>
-      </p>
+      <!-- 白話解釋 -->
+      <div class="mt-4 pt-4 border-t" style="border-color: rgba(0,0,0,0.08);">
+        <p id="verdict-plain" class="text-[13px] leading-relaxed text-[var(--ink-2)] font-medium">
+          <span class="sk inline-block w-3/4 h-4"></span>
+        </p>
+      </div>
     </div>
   </section>
 
-  <!-- ═════════ 第二層：勝率卡 ═════════ -->
-  <section class="surface p-5 mb-4">
+  <!-- ═════════ 第二層：勝率 ═════════ -->
+  <section class="card p-5 mb-4">
     <div class="flex items-center justify-between mb-4">
-      <div class="h-section">📊 系統實戰紀錄</div>
-      <span class="badge">回測 / 過往</span>
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-[var(--ink-2)]"><use href="#ico-trend-up"/></svg>
+        <span class="h-section">系統實戰紀錄</span>
+      </div>
+      <span class="badge">回測</span>
     </div>
 
     <div class="space-y-4">
-      <!-- 勝率 -->
       <div>
         <div class="flex items-center justify-between mb-2">
-          <span class="text-[12px] text-[var(--txt-2)] font-medium">近 20 次預測勝率</span>
-          <span id="winrate-tag" class="badge">--</span>
+          <span class="text-[12px] text-[var(--ink-2)] font-semibold">近 20 次預測勝率</span>
+          <span id="winrate-tag" class="pill wait">--</span>
         </div>
-        <div class="flex items-baseline gap-2 mb-2">
-          <span id="winrate-num" class="text-3xl font-black mono">--</span>
-          <span class="text-base text-[var(--muted)] mono">%</span>
+        <div class="flex items-baseline gap-2 mb-2.5">
+          <span id="winrate-num" class="text-[36px] font-black mono leading-none">--</span>
+          <span class="text-base text-[var(--muted)] mono font-bold">%</span>
         </div>
         <div class="pbar"><div id="winrate-bar" class="pbar-fill" style="width:0%; background: var(--buy);"></div></div>
       </div>
 
-      <!-- 三項統計 -->
-      <div class="grid grid-cols-3 gap-3 pt-3 border-t border-[var(--border-soft)]">
+      <div class="grid grid-cols-3 gap-3 pt-4 border-t border-[var(--hairline)]">
         <div>
-          <div class="text-[10px] text-[var(--muted)] uppercase tracking-wider">樣本</div>
-          <div id="bt-samples" class="mono font-bold mt-1 text-base">--</div>
+          <div class="text-[10px] text-[var(--muted)] uppercase tracking-widest font-bold">樣本</div>
+          <div id="bt-samples" class="mono font-extrabold mt-1 text-lg">--</div>
         </div>
         <div>
-          <div class="text-[10px] text-[var(--muted)] uppercase tracking-wider">Sharpe</div>
-          <div id="bt-sharpe" class="mono font-bold mt-1 text-base">--</div>
+          <div class="text-[10px] text-[var(--muted)] uppercase tracking-widest font-bold">Sharpe</div>
+          <div id="bt-sharpe" class="mono font-extrabold mt-1 text-lg">--</div>
         </div>
         <div>
-          <div class="text-[10px] text-[var(--muted)] uppercase tracking-wider">最大回撤</div>
-          <div id="bt-mdd" class="mono font-bold mt-1 text-base">--</div>
+          <div class="text-[10px] text-[var(--muted)] uppercase tracking-widest font-bold">最大回撤</div>
+          <div id="bt-mdd" class="mono font-extrabold mt-1 text-lg">--</div>
         </div>
       </div>
 
-      <!-- 推播門檻說明 -->
-      <div class="pt-3 border-t border-[var(--border-soft)] text-[11px] leading-relaxed text-[var(--muted)]">
-        🔔 <strong class="text-[var(--txt-2)]">高信心推播</strong>：當 XGBoost 模型對單一方向的把握 ≥ 80% 時，自動推送 Bark 通知。
+      <!-- 推播說明 -->
+      <div class="flex items-start gap-2.5 p-3 rounded-xl" style="background: var(--buy-tint); border: 1px solid var(--buy-bg);">
+        <svg class="w-4 h-4 mt-0.5 flex-shrink-0" style="color: var(--buy-deep);"><use href="#ico-bell"/></svg>
+        <div class="text-[12px] leading-relaxed" style="color: var(--buy-deep);">
+          <strong>Bark 高信心推播</strong>：當 AI 對方向把握 <strong class="mono">≥ 80%</strong> 時自動推送通知（買進 / 賣出皆會觸發）
+        </div>
       </div>
     </div>
   </section>
 
   <!-- ═════════ 第三層：趨勢圖 ═════════ -->
-  <section class="surface p-5 mb-4">
+  <section class="card p-5 mb-4">
     <div class="flex items-center justify-between mb-3">
-      <div class="h-section">📈 黃金 30 日走勢</div>
-      <div class="flex items-center gap-1.5 text-[10px] text-[var(--muted)]">
-        <span class="w-2 h-2 rounded-full" style="background: var(--gold);"></span>GC=F
+      <div class="flex items-center gap-2">
+        <svg class="w-4 h-4 text-[var(--ink-2)]"><use href="#ico-trend-up"/></svg>
+        <span class="h-section">黃金 30 日走勢</span>
       </div>
+      <span class="text-[10px] text-[var(--muted)] flex items-center gap-1">
+        <span class="w-2 h-2 rounded-full" style="background: var(--gold);"></span>GC=F
+      </span>
     </div>
     <div class="relative" style="height: 200px;">
       <canvas id="trend-chart"></canvas>
     </div>
   </section>
 
-  <!-- ═════════ 第四層：AI 進階分析（摺疊）═════════ -->
-  <section class="surface mb-4 overflow-hidden">
+  <!-- ═════════ 第四層：AI 進階分析 ═════════ -->
+  <section class="card mb-4 overflow-hidden">
     <details>
-      <summary class="px-5 py-4 flex items-center justify-between active:bg-[var(--surface-2)] transition-colors">
+      <summary class="px-5 py-4 flex items-center justify-between active:bg-[#fafbfc] transition-colors">
         <div class="flex items-center gap-2.5">
-          <span class="chev text-[var(--muted)]">▶</span>
-          <span class="h-section">🔬 AI 模型進階分析</span>
+          <span class="chev text-[var(--muted)] text-xs">▶</span>
+          <span class="h-section">🔬 AI 模型深度分析</span>
         </div>
-        <span class="text-[11px] text-[var(--muted)]">點擊展開</span>
+        <span class="text-[11px] text-[var(--muted)] font-medium">點擊展開</span>
       </summary>
 
-      <div class="px-5 pb-5 pt-1 space-y-4 border-t border-[var(--border-soft)]">
+      <div class="px-5 pb-5 pt-1 space-y-4 border-t border-[var(--hairline)]">
 
-        <!-- XGBoost 機率 -->
+        <!-- XGBoost 機率：上下並列 -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
-          <div class="surface-flat p-4">
+          <div class="card-flat p-4" style="border-color: var(--buy-bg);">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-[11px] font-semibold text-[var(--txt-2)] uppercase tracking-wider">上漲機率</span>
-              <span id="prob-up" class="mono font-bold text-[var(--buy-deep)]">--%</span>
+              <span class="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider" style="color: var(--buy-deep);">
+                <svg class="w-3.5 h-3.5"><use href="#ico-trend-up"/></svg>
+                上漲機率
+              </span>
+              <span id="prob-up" class="mono font-extrabold text-lg" style="color: var(--buy-deep);">--%</span>
             </div>
             <div class="pbar"><div id="prob-up-bar" class="pbar-fill" style="width:0%; background: var(--buy);"></div></div>
-            <div id="prob-up-tag" class="text-[10px] text-[var(--muted)] mt-2">--</div>
+            <div id="prob-up-tag" class="text-[11px] mt-2 font-medium text-[var(--ink-2)]">--</div>
           </div>
-          <div class="surface-flat p-4">
+          <div class="card-flat p-4" style="border-color: var(--sell-bg);">
             <div class="flex items-center justify-between mb-2">
-              <span class="text-[11px] font-semibold text-[var(--txt-2)] uppercase tracking-wider">下跌機率</span>
-              <span id="prob-dn" class="mono font-bold text-[var(--sell-deep)]">--%</span>
+              <span class="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wider" style="color: var(--sell-deep);">
+                <svg class="w-3.5 h-3.5"><use href="#ico-trend-dn"/></svg>
+                下跌機率
+              </span>
+              <span id="prob-dn" class="mono font-extrabold text-lg" style="color: var(--sell-deep);">--%</span>
             </div>
             <div class="pbar"><div id="prob-dn-bar" class="pbar-fill" style="width:0%; background: var(--sell);"></div></div>
-            <div id="prob-dn-tag" class="text-[10px] text-[var(--muted)] mt-2">--</div>
+            <div id="prob-dn-tag" class="text-[11px] mt-2 font-medium text-[var(--ink-2)]">--</div>
           </div>
         </div>
 
         <!-- COT + Smart Money -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div class="surface-flat p-4">
-            <div class="text-[11px] font-semibold uppercase tracking-wider text-[var(--txt-2)] mb-3">📋 COT 大戶持倉</div>
-            <div class="space-y-2 text-[13px]">
-              <div class="flex justify-between"><span class="text-[var(--muted)]">投機商淨多倉</span><span id="cot-spec" class="mono font-semibold">--</span></div>
-              <div class="flex justify-between"><span class="text-[var(--muted)]">多空比 (LS)</span><span id="cot-ls" class="mono font-semibold">--</span></div>
-              <div class="flex justify-between"><span class="text-[var(--muted)]">本週變化</span><span id="cot-chg" class="mono font-semibold">--</span></div>
+          <div class="card-flat p-4">
+            <div class="text-[11px] font-extrabold uppercase tracking-wider text-[var(--ink-2)] mb-3">📋 COT 大戶持倉</div>
+            <div class="space-y-2.5 text-[13px]">
+              <div class="flex justify-between"><span class="text-[var(--muted)]">投機商淨多倉</span><span id="cot-spec" class="mono font-bold">--</span></div>
+              <div class="flex justify-between"><span class="text-[var(--muted)]">多空比 (LS)</span><span id="cot-ls" class="mono font-bold">--</span></div>
+              <div class="flex justify-between"><span class="text-[var(--muted)]">本週變化</span><span id="cot-chg" class="mono font-bold">--</span></div>
             </div>
-            <div id="cot-verdict" class="mt-3 text-[11px] text-[var(--muted)] pt-2 border-t border-[var(--border-soft)]">--</div>
+            <div id="cot-verdict" class="mt-3 text-[11px] text-[var(--ink-2)] pt-2.5 border-t border-[var(--hairline)] font-medium">--</div>
           </div>
-          <div class="surface-flat p-4">
-            <div class="text-[11px] font-semibold uppercase tracking-wider text-[var(--txt-2)] mb-3">💰 GLD ETF 流向</div>
-            <div class="space-y-2 text-[13px]">
-              <div class="flex justify-between"><span class="text-[var(--muted)]">5 日資金流向</span><span id="sm-flow" class="mono font-semibold">--</span></div>
-              <div class="flex justify-between"><span class="text-[var(--muted)]">趨勢</span><span id="sm-trend" class="mono font-semibold">--</span></div>
-              <div class="flex justify-between"><span class="text-[var(--muted)]">Smart Money</span><span id="sm-score" class="mono font-semibold">--</span></div>
+          <div class="card-flat p-4">
+            <div class="text-[11px] font-extrabold uppercase tracking-wider text-[var(--ink-2)] mb-3">💰 GLD ETF 流向</div>
+            <div class="space-y-2.5 text-[13px]">
+              <div class="flex justify-between"><span class="text-[var(--muted)]">5 日資金流</span><span id="sm-flow" class="mono font-bold">--</span></div>
+              <div class="flex justify-between"><span class="text-[var(--muted)]">趨勢</span><span id="sm-trend" class="mono font-bold">--</span></div>
+              <div class="flex justify-between"><span class="text-[var(--muted)]">Smart Money</span><span id="sm-score" class="mono font-bold">--</span></div>
             </div>
-            <div id="sm-verdict" class="mt-3 text-[11px] text-[var(--muted)] pt-2 border-t border-[var(--border-soft)]">--</div>
+            <div id="sm-verdict" class="mt-3 text-[11px] text-[var(--ink-2)] pt-2.5 border-t border-[var(--hairline)] font-medium">--</div>
           </div>
         </div>
 
         <!-- 訊號表 -->
-        <div class="surface-flat p-4">
-          <div class="text-[11px] font-semibold uppercase tracking-wider text-[var(--txt-2)] mb-3">📑 多時框訊號</div>
+        <div class="card-flat p-4">
+          <div class="text-[11px] font-extrabold uppercase tracking-wider text-[var(--ink-2)] mb-2.5">📑 多時框訊號</div>
           <div class="overflow-x-auto -mx-4 px-4">
-            <table class="tbl-sig">
-              <thead><tr><th>時框</th><th>方向</th><th>分數</th><th>價格</th></tr></thead>
+            <table class="tbl">
+              <thead><tr><th>時框</th><th>方向</th><th>信心</th><th>價格</th></tr></thead>
               <tbody id="signals-tbody"><tr><td colspan="4" class="text-center text-[var(--muted)] py-4">載入中...</td></tr></tbody>
             </table>
           </div>
@@ -343,55 +468,52 @@
   </section>
 
   <!-- ═════════ 自訂追蹤 ═════════ -->
-  <section class="grid grid-cols-3 gap-3 mb-5">
-    <div class="surface p-3.5" id="card-silver">
+  <section class="grid grid-cols-3 gap-2.5 mb-5">
+    <div class="card p-3.5" id="card-silver">
       <div class="flex items-center justify-between">
-        <span class="text-[10px] text-[var(--muted)] uppercase tracking-wider font-semibold">白銀</span>
+        <span class="text-[10px] text-[var(--muted)] uppercase tracking-wider font-extrabold">白銀</span>
         <span class="text-base">🥈</span>
       </div>
-      <div class="text-[15px] md:text-base font-bold mono mt-1.5" data-field="price">--</div>
-      <div class="text-[11px] mono mt-0.5" data-field="change">--</div>
+      <div class="text-[15px] font-extrabold mono mt-1.5" data-field="price">--</div>
+      <div class="text-[11px] mono mt-0.5 font-bold" data-field="change">--</div>
     </div>
-    <div class="surface p-3.5" id="card-tw">
+    <div class="card p-3.5" id="card-tw">
       <div class="flex items-center justify-between">
-        <span class="text-[10px] text-[var(--muted)] uppercase tracking-wider font-semibold">台積</span>
+        <span class="text-[10px] text-[var(--muted)] uppercase tracking-wider font-extrabold">台積</span>
         <span class="text-base">🇹🇼</span>
       </div>
-      <div class="text-[15px] md:text-base font-bold mono mt-1.5" data-field="price">--</div>
-      <div class="text-[11px] mono mt-0.5" data-field="change">--</div>
+      <div class="text-[15px] font-extrabold mono mt-1.5" data-field="price">--</div>
+      <div class="text-[11px] mono mt-0.5 font-bold" data-field="change">--</div>
     </div>
-    <div class="surface p-3.5" id="card-us">
+    <div class="card p-3.5" id="card-us">
       <div class="flex items-center justify-between">
-        <span class="text-[10px] text-[var(--muted)] uppercase tracking-wider font-semibold">NVDA</span>
+        <span class="text-[10px] text-[var(--muted)] uppercase tracking-wider font-extrabold">NVDA</span>
         <span class="text-base">🇺🇸</span>
       </div>
-      <div class="text-[15px] md:text-base font-bold mono mt-1.5" data-field="price">--</div>
-      <div class="text-[11px] mono mt-0.5" data-field="change">--</div>
+      <div class="text-[15px] font-extrabold mono mt-1.5" data-field="price">--</div>
+      <div class="text-[11px] mono mt-0.5 font-bold" data-field="change">--</div>
     </div>
   </section>
 
   <!-- Footer -->
-  <footer class="text-center text-[11px] text-[var(--muted)] leading-relaxed">
-    <div class="font-semibold text-[var(--txt-2)] mb-1">SIGNAL v6.0</div>
-    <div>XGBoost + COT + Multi-Timeframe Consensus</div>
-    <div class="mt-1">資料：yfinance / CFTC / FRED</div>
-    <div class="mt-1" id="last-update-text">最後更新：--</div>
-    <div class="mt-2 text-[10px] opacity-70 px-4">
+  <footer class="text-center text-[11px] text-[var(--muted)] leading-relaxed pt-4 border-t border-[var(--hairline)]">
+    <div class="font-bold text-[var(--ink-2)] mb-1">SIGNAL v6.0</div>
+    <div>XGBoost + COT + Multi-Timeframe</div>
+    <div>每 15 分鐘自動更新</div>
+    <div class="mt-1.5 mono" id="last-update-text">--</div>
+    <div class="mt-3 text-[10px] opacity-60 px-4 leading-relaxed">
       本系統為教育研究用途，不構成投資建議。投資有風險，入市請謹慎。
     </div>
   </footer>
 
 </div>
 
-<!-- ═════════ 渲染邏輯 ═════════ -->
+<!-- ═════════ JS 渲染 ═════════ -->
 <script>
 (function () {
   'use strict';
+  const $ = (s) => document.querySelector(s);
 
-  const $  = (s) => document.querySelector(s);
-  const $$ = (s) => document.querySelectorAll(s);
-
-  // ─── Helpers ───
   const fmtNum = (v, d=2) => {
     if (v === null || v === undefined || isNaN(v)) return '--';
     return Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -404,95 +526,106 @@
 
   // ─── 主訊號決策 ───
   function deriveVerdict(d) {
-    if (!d) return { kind: 'wait', confidence: 0, plain: '系統暫無資料，請稍候自動更新。' };
+    if (!d) return { kind: 'wait', confidence: 0, plain: '系統暫無資料，請稍候自動更新。', isHigh: false };
 
-    const lb     = d.lambda || {};
+    const lb = d.lambda || {};
     const probUp = Number(lb.prob_up ?? 50);
     const probDn = Number(lb.prob_dn ?? 50);
-    const sigs   = d.signals || {};
+    const sigs = d.signals || {};
 
     let buyVotes = 0, sellVotes = 0, totalVotes = 0;
     for (const [, s] of Object.entries(sigs)) {
-      if (!s || !s.signal) continue;
-      // signals 結構可能是 { 'GC=F': { short_term: { signal, confidence } } } 或 { '4H': { signal, ... } }
+      if (!s) continue;
       const sigStr = s.short_term?.signal || s.signal;
       if (!sigStr) continue;
       totalVotes++;
-      if (String(sigStr).includes('BUY'))  buyVotes++;
+      if (String(sigStr).includes('BUY')) buyVotes++;
       if (String(sigStr).includes('SELL')) sellVotes++;
     }
 
-    let kind = 'wait', confidence = 50, plain = '';
+    let kind = 'wait', confidence = 50, plain = '', isHigh = false;
 
     if (probUp >= 80) {
-      kind = 'buy';
-      confidence = probUp;
-      plain = `🔔 高信心訊號：AI 上漲機率 ${probUp.toFixed(0)}%，已觸發 Bark 推播。建議分批進場。`;
+      kind = 'buy'; confidence = probUp; isHigh = true;
+      plain = `🔔 高信心訊號：AI 對「上漲」把握達 ${probUp.toFixed(0)}%，已透過 Bark 推播通知。建議分批進場。`;
     } else if (probDn >= 80) {
-      kind = 'sell';
-      confidence = probDn;
-      plain = `🔔 高信心訊號：AI 下跌機率 ${probDn.toFixed(0)}%，已觸發 Bark 推播。建議減倉避險。`;
+      kind = 'sell'; confidence = probDn; isHigh = true;
+      plain = `🔔 高信心訊號：AI 對「下跌」把握達 ${probDn.toFixed(0)}%，已透過 Bark 推播通知。建議減倉避險。`;
     } else if (probUp >= 60 && buyVotes >= sellVotes) {
-      kind = 'buy';
-      confidence = probUp;
-      plain = `AI 上漲機率 ${probUp.toFixed(0)}%，${totalVotes} 個時框中有 ${buyVotes} 個顯示買進信號。可考慮輕倉佈局。`;
+      kind = 'buy'; confidence = probUp;
+      plain = `AI 上漲機率 ${probUp.toFixed(0)}%，${totalVotes} 個時框中 ${buyVotes} 個顯示買進。可考慮輕倉佈局。`;
     } else if (probDn >= 60 && sellVotes >= buyVotes) {
-      kind = 'sell';
-      confidence = probDn;
-      plain = `AI 下跌機率 ${probDn.toFixed(0)}%，${totalVotes} 個時框中有 ${sellVotes} 個顯示賣出信號。建議謹慎或減倉。`;
+      kind = 'sell'; confidence = probDn;
+      plain = `AI 下跌機率 ${probDn.toFixed(0)}%，${totalVotes} 個時框中 ${sellVotes} 個顯示賣出。建議謹慎或減倉。`;
     } else {
-      kind = 'wait';
-      confidence = Math.max(50, 100 - Math.abs(probUp - probDn));
-      plain = `AI 上漲 ${probUp.toFixed(0)}% / 下跌 ${probDn.toFixed(0)}%，方向不明。建議觀望，等待信心 ≥ 80% 訊號。`;
+      kind = 'wait'; confidence = Math.max(50, 100 - Math.abs(probUp - probDn));
+      plain = `AI 上漲 ${probUp.toFixed(0)}% / 下跌 ${probDn.toFixed(0)}%，方向未明。建議觀望，等待 ≥ 80% 高信心訊號。`;
     }
-    return { kind, confidence, plain, probUp, probDn, buyVotes, sellVotes, totalVotes };
+    return { kind, confidence, plain, probUp, probDn, isHigh };
   }
 
-  function stars(conf) {
-    const n = Math.max(1, Math.min(5, Math.round((conf - 50) / 10)));
-    return Array.from({ length: 5 }, (_, i) => `<span class="star ${i < n ? 'on' : ''}">★</span>`).join('');
-  }
-
-  function regimeLabel(r) {
-    if (!r) return '--';
+  function regimeInfo(r) {
+    if (!r) return { label: '--', icon: 'ico-trend-flat', color: 'var(--muted)' };
     const map = {
-      'trending_up': '📈 上升趨勢',
-      'trending_down': '📉 下降趨勢',
-      'ranging': '〰️ 區間震盪',
-      'high_volatility': '⚡ 高波動',
-      'TRENDING': '📈 趨勢中',
-      'RANGING': '〰️ 區間',
-      'VOLATILE': '⚡ 高波動',
-      'normal': '平穩',
-      'NORMAL': '平穩',
+      'trending_up':   { label: '上升趨勢', icon: 'ico-trend-up', color: 'var(--buy)' },
+      'TRENDING':      { label: '趨勢中',  icon: 'ico-trend-up', color: 'var(--buy)' },
+      'trending_down': { label: '下降趨勢', icon: 'ico-trend-dn', color: 'var(--sell)' },
+      'ranging':       { label: '區間震盪', icon: 'ico-trend-flat', color: 'var(--wait)' },
+      'RANGING':       { label: '區間震盪', icon: 'ico-trend-flat', color: 'var(--wait)' },
+      'high_volatility': { label: '高波動', icon: 'ico-bolt', color: 'var(--sell)' },
+      'VOLATILE':      { label: '高波動',  icon: 'ico-bolt', color: 'var(--sell)' },
+      'normal':        { label: '平穩',    icon: 'ico-trend-flat', color: 'var(--ink-2)' },
+      'NORMAL':        { label: '平穩',    icon: 'ico-trend-flat', color: 'var(--ink-2)' },
     };
-    return map[r] || r;
+    return map[r] || { label: r, icon: 'ico-trend-flat', color: 'var(--muted)' };
   }
 
-  // ─── Render: Verdict ───
   function renderVerdict(d) {
     const v = deriveVerdict(d);
-    const sec = $('#verdict');
-    const dot = $('#verdict-dot');
-    sec.classList.remove('buy','sell','wait');
-    dot.classList.remove('buy','sell','wait','pulse-buy','pulse-sell','pulse-wait');
-    sec.classList.add(v.kind);
-    dot.classList.add(v.kind, `pulse-${v.kind}`);
+    const card = $('#verdict');
+    const arrow = $('#verdict-arrow');
+    const ring = $('#pulse-ring');
+    const fill = $('#conf-fill');
+    const boltRow = $('#bolt-row');
+    const boltBadge = $('#bolt-badge');
 
+    card.classList.remove('buy', 'sell', 'wait');
+    card.classList.add(v.kind);
+
+    const colors = { buy: 'var(--buy)', sell: 'var(--sell)', wait: 'var(--wait)' };
+    const icons = { buy: 'ico-up', sell: 'ico-dn', wait: 'ico-wait' };
     const titles = { buy: '現在該買進', sell: '現在該賣出', wait: '先觀望' };
-    const icons  = { buy: '↑', sell: '↓', wait: '—' };
-    dot.textContent = icons[v.kind];
+
+    arrow.style.color = colors[v.kind];
+    arrow.querySelector('use').setAttribute('href', '#' + icons[v.kind]);
+    ring.style.borderColor = colors[v.kind];
+    ring.classList.toggle('active', v.kind !== 'wait');
+
     $('#verdict-title').textContent = titles[v.kind];
-    $('#verdict-confidence').innerHTML = `信心 <span class="ml-0.5 mono font-bold">${v.confidence.toFixed(0)}%</span>`;
-    $('#verdict-stars').innerHTML = stars(v.confidence);
-    $('#verdict-regime').textContent = regimeLabel(d.regime);
+    $('#conf-num').textContent = v.confidence.toFixed(0) + '%';
+    fill.style.width = Math.max(0, Math.min(100, v.confidence)) + '%';
+    fill.style.background = colors[v.kind];
+
+    // 高信心徽章
+    if (v.isHigh && v.kind !== 'wait') {
+      boltRow.style.display = '';
+      boltBadge.classList.remove('buy', 'sell');
+      boltBadge.classList.add(v.kind);
+    } else {
+      boltRow.style.display = 'none';
+    }
+
+    // 市況
+    const r = regimeInfo(d.regime);
+    $('#regime-text').textContent = r.label;
+    $('#regime-icon').style.color = r.color;
+    $('#regime-icon').querySelector('use').setAttribute('href', '#' + r.icon);
+
     $('#verdict-plain').textContent = v.plain;
   }
 
-  // ─── Render: Price ───
   function renderPrice(d) {
     const sigs = d.signals || {};
-    // 兼容兩種結構
     let price = null;
     for (const s of Object.values(sigs)) {
       if (!s) continue;
@@ -511,7 +644,6 @@
     }
   }
 
-  // ─── Render: Performance ───
   function renderPerformance(d) {
     const wr = d.win_rate_20;
     const bt = d.backtest || {};
@@ -519,9 +651,11 @@
     if (wr !== null && wr !== undefined) {
       $('#winrate-num').textContent = wr;
       $('#winrate-bar').style.width = Math.min(100, wr) + '%';
-      const tag = wr >= 60 ? '優秀' : wr >= 50 ? '中性' : '需觀察';
-      $('#winrate-tag').textContent = tag;
-      $('#winrate-bar').style.background = wr >= 60 ? 'var(--buy)' : wr >= 50 ? 'var(--wait)' : 'var(--sell)';
+      const tag = $('#winrate-tag');
+      tag.classList.remove('buy', 'sell', 'wait');
+      if (wr >= 60) { tag.classList.add('buy'); tag.textContent = '優秀'; $('#winrate-bar').style.background = 'var(--buy)'; }
+      else if (wr >= 50) { tag.classList.add('wait'); tag.textContent = '中性'; $('#winrate-bar').style.background = 'var(--wait)'; }
+      else { tag.classList.add('sell'); tag.textContent = '需觀察'; $('#winrate-bar').style.background = 'var(--sell)'; }
     } else {
       $('#winrate-num').textContent = '--';
       $('#winrate-tag').textContent = '樣本累積中';
@@ -532,7 +666,6 @@
     $('#bt-mdd').textContent     = bt.max_drawdown !== undefined ? fmtPct(bt.max_drawdown, 1) : '--';
   }
 
-  // ─── Render: Chart ───
   let chart;
   function renderChart(d) {
     const ctx = document.getElementById('trend-chart');
@@ -548,31 +681,30 @@
       data: {
         labels: labels,
         datasets: [{
-          label: '黃金 GC=F',
+          label: 'GC=F',
           data: data,
-          borderColor: 'rgba(201, 162, 39, 1)',
+          borderColor: '#c9a227',
           backgroundColor: (c) => {
             const ctx = c.chart.ctx;
             const g = ctx.createLinearGradient(0, 0, 0, 200);
-            g.addColorStop(0, 'rgba(201, 162, 39, 0.18)');
-            g.addColorStop(1, 'rgba(201, 162, 39, 0.02)');
+            g.addColorStop(0, 'rgba(201, 162, 39, 0.20)');
+            g.addColorStop(1, 'rgba(201, 162, 39, 0)');
             return g;
           },
-          fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.2,
+          fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2.5,
         }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(15,23,41,0.92)', padding: 10, displayColors: false } },
+        plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(10,10,10,0.92)', padding: 10, titleFont: { weight: '700' }, displayColors: false } },
         scales: {
-          x: { grid: { display: false }, ticks: { color: '#8b94a8', font: { size: 10 }, maxTicksLimit: 6 } },
-          y: { grid: { color: 'rgba(226,230,238,0.5)', drawBorder: false }, ticks: { color: '#8b94a8', font: { size: 10 } }, position: 'right' }
+          x: { grid: { display: false }, ticks: { color: '#9aa0a6', font: { size: 10 }, maxTicksLimit: 6 } },
+          y: { grid: { color: '#f0f1f3', drawBorder: false }, ticks: { color: '#9aa0a6', font: { size: 10 } }, position: 'right' }
         }
       }
     });
   }
 
-  // ─── Render: Advanced ───
   function renderAdvanced(d) {
     const lb = d.lambda || {};
     const pu = Number(lb.prob_up ?? 0);
@@ -581,8 +713,8 @@
     $('#prob-dn').textContent = pd.toFixed(0) + '%';
     $('#prob-up-bar').style.width = pu + '%';
     $('#prob-dn-bar').style.width = pd + '%';
-    $('#prob-up-tag').textContent = pu >= 80 ? '🔔 高信心，已觸發推播' : pu >= 60 ? '偏多訊號' : pu >= 50 ? '輕微偏多' : '無偏多訊號';
-    $('#prob-dn-tag').textContent = pd >= 80 ? '🔔 高信心，已觸發推播' : pd >= 60 ? '偏空訊號' : pd >= 50 ? '輕微偏空' : '無偏空訊號';
+    $('#prob-up-tag').textContent = pu >= 80 ? '⚡ 高信心，已推播' : pu >= 60 ? '偏多訊號' : pu >= 50 ? '輕微偏多' : '無偏多';
+    $('#prob-dn-tag').textContent = pd >= 80 ? '⚡ 高信心，已推播' : pd >= 60 ? '偏空訊號' : pd >= 50 ? '輕微偏空' : '無偏空';
 
     const cot = (d.macro && d.macro.cot_gold) || {};
     $('#cot-spec').textContent = cot.spec_net_pct !== undefined ? cot.spec_net_pct + '%' : '--';
@@ -590,7 +722,7 @@
     $('#cot-chg').textContent  = cot.weekly_change ?? cot.change ?? '--';
     if (cot.spec_net_pct !== undefined) {
       const v = Number(cot.spec_net_pct);
-      $('#cot-verdict').textContent = v > 30 ? '⚠️ 大戶高度偏多，注意過熱' : v > 10 ? '✓ 大戶溫和偏多' : v < -10 ? '⚠️ 大戶偏空' : '— 大戶部位中性';
+      $('#cot-verdict').textContent = v > 30 ? '⚠️ 大戶高度偏多，注意過熱反轉' : v > 10 ? '✓ 大戶溫和偏多' : v < -10 ? '⚠️ 大戶偏空' : '— 大戶部位中性';
     }
 
     const sm = lb.smart_money || {};
@@ -602,31 +734,28 @@
       $('#sm-verdict').textContent = t.includes('流入') ? '✓ 聰明錢流入，支撐金價' : t.includes('流出') ? '⚠️ 聰明錢撤離，金價承壓' : '— 資金面中性';
     }
 
-    // 訊號表
     const tbody = $('#signals-tbody');
     const sigs = d.signals || {};
     const rows = Object.entries(sigs).map(([key, s]) => {
       if (!s) return '';
-      // 兼容兩種結構
       const sigData = s.short_term || s;
       const sig = String(sigData.signal || '--');
       const conf = sigData.confidence ?? sigData.score;
       const price = sigData.price ?? s.feature_vector?.close;
-      const color = sig.includes('BUY') ? 'var(--buy-deep)' : sig.includes('SELL') ? 'var(--sell-deep)' : 'var(--muted)';
-      const arrow = sig.includes('BUY') ? '▲' : sig.includes('SELL') ? '▼' : '◆';
-      // 顯示 ticker 名稱
       const tfLabel = key.replace('=F', '').replace('GC', '黃金').replace('SI', '白銀');
+      let pillClass = 'wait', arrow = '◆';
+      if (sig.includes('BUY'))  { pillClass = 'buy'; arrow = '▲'; }
+      if (sig.includes('SELL')) { pillClass = 'sell'; arrow = '▼'; }
       return `<tr>
-        <td class="font-semibold">${tfLabel}</td>
-        <td style="color:${color}; font-weight:700;">${arrow} ${sig}</td>
-        <td class="mono">${conf !== undefined ? Number(conf).toFixed(0) : '--'}</td>
+        <td class="font-bold">${tfLabel}</td>
+        <td><span class="pill ${pillClass}">${arrow} ${sig.replace('STRONG_', '強')}</span></td>
+        <td class="mono font-bold">${conf !== undefined ? Number(conf).toFixed(0) : '--'}</td>
         <td class="mono">${price !== undefined ? '$' + fmtNum(price, 1) : '--'}</td>
       </tr>`;
     }).filter(Boolean).join('');
     tbody.innerHTML = rows || '<tr><td colspan="4" class="text-center text-[var(--muted)] py-4">無訊號資料</td></tr>';
   }
 
-  // ─── Render: Assets ───
   function renderAssets(d) {
     const a = d.assets || {};
     const fill = (id, obj) => {
@@ -645,38 +774,28 @@
     fill('card-us', a.us);
   }
 
-  // ─── Render: Status ───
   function renderStatus(d) {
     const badge = $('#conn-badge');
     const lu = $('#last-update-text');
-    const barkBadge = $('#bark-badge');
-
     if (!d || !d.timestamp) {
       badge.textContent = '● 無資料';
-      badge.className = 'badge badge-offline';
+      badge.className = 'badge offline';
       return;
     }
     const ts = new Date(d.timestamp);
     const ageMin = (Date.now() - ts.getTime()) / 60000;
-    const fresh = ageMin < 30; // 15min cron + 緩衝
+    const fresh = ageMin < 30;
     badge.textContent = fresh ? '● 即時' : '● 資料過舊';
-    badge.className = 'badge ' + (fresh ? 'badge-live' : 'badge-stale');
-
-    if (lu) lu.textContent = '最後更新：' + ts.toLocaleString('zh-TW', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-
-    // Bark 推播狀態：若 lambda 結果含 push_enabled 就顯示
-    if (d.lambda?.push_enabled || d.bark_enabled) {
-      barkBadge.style.display = '';
-    }
+    badge.className = 'badge ' + (fresh ? 'live' : 'stale');
+    if (lu) lu.textContent = '最後更新 ' + ts.toLocaleString('zh-TW', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
   }
 
-  // ─── Main render ───
   function render() {
     const d = window.AUTO_DATA;
     if (!d) {
       $('#verdict-plain').textContent = '⏳ 等待 update_gld_data.py 注入資料。如果這段文字超過 30 分鐘未消失，代表 GitHub Actions 流程出錯。';
       $('#conn-badge').textContent = '● 等待資料';
-      $('#conn-badge').className = 'badge badge-stale';
+      $('#conn-badge').className = 'badge stale';
       return;
     }
     try {
@@ -688,16 +807,13 @@
       renderAdvanced(d);
       renderAssets(d);
     } catch (e) {
-      console.error('Render error:', e);
+      console.error(e);
       $('#verdict-plain').textContent = '渲染錯誤：' + e.message;
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', render);
-  } else {
-    render();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
+  else render();
 })();
 </script>
 
