@@ -217,6 +217,12 @@ class GldMmsUpdaterV6:
     def _calc_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         c, h, l, v, o = 'close','high','low','volume','open'
 
+        # 防禦：強制把 OHLCV 全部轉 float（yfinance 0.2.5x+ 偶爾回 object dtype）
+        for _col in (c, h, l, v, o):
+            if _col in df.columns:
+                df[_col] = pd.to_numeric(df[_col], errors='coerce')
+        df = df.dropna(subset=[c]).copy()
+
         delta = df[c].diff()
         gain  = delta.where(delta > 0, 0).rolling(14).mean()
         loss  = (-delta.where(delta < 0, 0)).rolling(14).mean()
