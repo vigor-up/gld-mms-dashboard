@@ -29,7 +29,7 @@ jobs:
       - name: Install deps
         run: |
           pip install --upgrade pip
-          pip install yfinance pandas numpy requests boto3
+          pip install 'yfinance==0.2.40' pandas numpy requests boto3
 
       - name: Run updater
         env:
