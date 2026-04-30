@@ -3,11 +3,11 @@ name: GLD-MMS 24H Lambda XGBoost 版 (v6.0)
 on:
   workflow_dispatch:
   schedule:
-    # 每 15 分鐘執行一次（GitHub Actions 用 UTC，cron 不分週末，由 Python 內部判斷市場時段）
-    # 注意：GitHub Actions 的 cron 在高負載時可能延遲 5-15 分鐘，無法保證精準
+    # 每 15 分鐘執行一次（GitHub Actions 用 UTC，cron 不分週末）
+    # GitHub Actions schedule 在高負載時可能延遲 5–60 分鐘
     - cron: '*/15 * * * *'
 
-# 防止重疊執行（前一次還沒跑完就跳過下一次）
+# 防止重疊執行
 concurrency:
   group: gld-mms-updater
   cancel-in-progress: false
@@ -25,7 +25,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
       - name: Install deps
         run: |
