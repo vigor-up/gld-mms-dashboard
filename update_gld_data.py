@@ -1043,6 +1043,23 @@ class GldMmsUpdaterV6:
         win_rate   = calc_win_rate_20(history, 20)
         bt_metrics = calc_backtest_metrics(history, 100)
 
+        # 照市す GLD 30日 close 序列（犼傹�update_html 方径��� 层/影齍隰' �嘞）
+        gold_history = []
+        try:
+            if 'GC=F' in self.daily and self.daily['GC=F']:
+                gold_history = [float(r.get('close', 0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
+            if not gold_history:
+                _gh = yf.Ticker('GLD').history(period='90d', interval='1d')
+                if _gh is not None and not _gh.empty:
+                    if isinstance(_gh.columns, pd.MultiIndex):
+                        _gh.columns = [str(c[0]) for c in _gh.columns]
+                    if 'Close' in _gh.columns:
+                        _gh['Close'] = pd.to_numeric(_gh['Close'], errors='coerce')
+                        _gh = _gh.dropna(subset=['Close'])
+                        gold_history = [round(float(x), 2) for x in _gh['Close'].tail(30).tolist()]
+        except Exception as e:
+            print(f"[WARN] 黃金歷史走勫抓取失敗: {e}")
+
         cot = self.macro.get('cot_gold', {})
         breakdown = [
             f"COT大戶偏多: {cot.get('spec_net_pct', 0)}% OI",
