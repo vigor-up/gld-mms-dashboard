@@ -34,6 +34,11 @@ jobs:
       - name: Run updater
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          # 自選股 ticker（要換股，改下面 4 行 commit 即可，15 分內生效）
+          TW_TICKER: '2330.TW'
+          TW_NAME:   '台積電'
+          US_TICKER: 'NVDA'
+          US_NAME:   'NVIDIA'
           BARK_KEY_1: ${{ secrets.BARK_KEY_1 }}
           BARK_KEY_2: ${{ secrets.BARK_KEY_2 }}
           BARK_KEY_3: ${{ secrets.BARK_KEY_3 }}
