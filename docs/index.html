@@ -3,289 +3,586 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SIGNAL · 黃金多周期動量系統</title>
+<title>SIGNAL · 黃金多周期動量系統 v6.0</title>
+<meta name="description" content="GLD-MMS Top-10% 預測模型 · XGBoost + COT + 多時框共識 · 即時黃金交易信號">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  .signal-pulse { animation: pulse 1.5s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.75} }
-  html { scroll-behavior:smooth; }
+  :root {
+    --bg: #0a0e1a;
+    --panel: #11172a;
+    --panel-2: #161d33;
+    --line: #1f2842;
+    --txt: #e6ebf5;
+    --muted: #7c8aa8;
+    --buy: #16d97f;
+    --buy-glow: rgba(22, 217, 127, 0.35);
+    --sell: #ff4d6d;
+    --sell-glow: rgba(255, 77, 109, 0.35);
+    --wait: #f5b800;
+    --wait-glow: rgba(245, 184, 0, 0.30);
+    --gold: #d4af37;
+  }
+  html, body { background: var(--bg); color: var(--txt); font-family: 'Inter', system-ui, sans-serif; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .panel-2 { background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px; }
+  .badge { font-size: 11px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .pulse-buy   { animation: pulse-buy 2s infinite; }
+  .pulse-sell  { animation: pulse-sell 2s infinite; }
+  .pulse-wait  { animation: pulse-wait 3s infinite; }
+  @keyframes pulse-buy   { 0%,100% { box-shadow: 0 0 0 0 var(--buy-glow), 0 0 60px var(--buy-glow);} 50% { box-shadow: 0 0 0 24px transparent, 0 0 90px var(--buy-glow);} }
+  @keyframes pulse-sell  { 0%,100% { box-shadow: 0 0 0 0 var(--sell-glow), 0 0 60px var(--sell-glow);} 50% { box-shadow: 0 0 0 24px transparent, 0 0 90px var(--sell-glow);} }
+  @keyframes pulse-wait  { 0%,100% { box-shadow: 0 0 0 0 var(--wait-glow), 0 0 40px var(--wait-glow);} 50% { box-shadow: 0 0 0 16px transparent, 0 0 60px var(--wait-glow);} }
+  .progress-bar { height: 8px; background: var(--line); border-radius: 999px; overflow: hidden; }
+  .progress-fill { height: 100%; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  .chev { transition: transform 0.2s; }
+  details[open] .chev { transform: rotate(90deg); }
+  .star { color: var(--line); }
+  .star.on { color: var(--gold); }
+  /* 菜鳥級主動作條 */
+  .verdict-card {
+    border-radius: 22px;
+    padding: 28px 32px;
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+  }
+  .verdict-card.buy   { background: linear-gradient(135deg, rgba(22,217,127,0.18) 0%, rgba(22,217,127,0.04) 100%); border-color: rgba(22,217,127,0.35); }
+  .verdict-card.sell  { background: linear-gradient(135deg, rgba(255,77,109,0.18) 0%, rgba(255,77,109,0.04) 100%); border-color: rgba(255,77,109,0.35); }
+  .verdict-card.wait  { background: linear-gradient(135deg, rgba(245,184,0,0.16)  0%, rgba(245,184,0,0.04)  100%); border-color: rgba(245,184,0,0.30); }
+  .verdict-dot { width: 96px; height: 96px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 44px; font-weight: 900; }
+  .verdict-dot.buy  { background: var(--buy);  color: #022817; }
+  .verdict-dot.sell { background: var(--sell); color: #2a0511; }
+  .verdict-dot.wait { background: var(--wait); color: #2a1f02; }
+  /* 行動建議 chip */
+  .action-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+    background: rgba(255,255,255,0.06); border: 1px solid var(--line);
+  }
+  /* 載入時骨架 */
+  .skeleton { background: linear-gradient(90deg, var(--line) 0%, var(--panel-2) 50%, var(--line) 100%); background-size: 200% 100%; animation: sk 1.4s infinite; border-radius: 6px; }
+  @keyframes sk { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  /* 表格 */
+  table.signals-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.signals-tbl th { text-align: left; color: var(--muted); font-weight: 500; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  table.signals-tbl td { padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  table.signals-tbl tr:last-child td { border-bottom: none; }
+  /* 隱藏 */
+  .hidden-init { display: none; }
 </style>
 </head>
-<body class="bg-white font-sans text-gray-800 min-h-screen">
+<body class="min-h-screen">
 
-<!-- 頂部導航 -->
-<header class="sticky top-0 bg-white border-b border-gray-200 shadow-sm z-50">
-  <div class="max-w-6xl mx-auto px-4 md:px-6 py-3 flex justify-between items-center">
+<!-- ════════ 資料注入點 (請勿刪除) ════════ -->
+<script id="data-source">const AUTO_DATA = null;</script>
+<!-- ═══════════════════════════════════════ -->
+
+<div class="max-w-6xl mx-auto px-4 py-6 md:py-10">
+
+  <!-- 頂部 Bar -->
+  <header class="flex items-center justify-between mb-6">
     <div class="flex items-center gap-3">
-      <div class="w-7 h-7 bg-gray-900 rounded-full flex items-center justify-center">
-        <span class="text-white text-xs font-bold">S</span>
-      </div>
-      <h1 class="text-lg font-bold text-gray-900 tracking-tight">SIGNAL 黃金系統</h1>
-    </div>
-    <div class="flex items-center gap-4">
-      <div id="live-time" class="text-xs text-gray-400 font-mono"></div>
-      <div id="live-status" class="flex items-center gap-1.5">
-        <span class="w-2 h-2 rounded-full bg-gray-300"></span>
-        <span class="text-xs text-gray-400">等待連線</span>
-      </div>
-    </div>
-  </div>
-</header>
-
-<main class="max-w-6xl mx-auto px-4 md:px-6 py-6 space-y-8">
-
-  <!-- 核心信號卡片 -->
-  <section id="signal">
-    <h2 class="text-base font-semibold text-gray-500 uppercase tracking-widest mb-4" style="font-size:0.7rem">實時交易信號</h2>
-    <div id="signal-cards" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <!-- 動態生成 -->
-      <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center text-gray-400 text-sm">載入中…</div>
-      <div class="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center text-gray-400 text-sm">載入中…</div>
-    </div>
-  </section>
-
-  <!-- 大盤圖表 -->
-  <section id="chart">
-    <h2 class="text-base font-semibold text-gray-500 uppercase tracking-widest mb-4" style="font-size:0.7rem">黃金 / 白銀 走勢</h2>
-    <div class="bg-white border border-gray-200 rounded-xl p-4 md:p-6" style="height:320px">
-      <canvas id="mainChart"></canvas>
-    </div>
-  </section>
-
-  <!-- 三市場信心 -->
-  <section id="confidence">
-    <h2 class="text-base font-semibold text-gray-500 uppercase tracking-widest mb-4" style="font-size:0.7rem">市場信心指數</h2>
-    <div id="conf-cards" class="grid grid-cols-3 gap-3">
-      <!-- 動態生成 -->
-    </div>
-  </section>
-
-  <!-- 近期記錄 -->
-  <section id="history">
-    <h2 class="text-base font-semibold text-gray-500 uppercase tracking-widest mb-4" style="font-size:0.7rem">近期交易記錄</h2>
-    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="bg-gray-50 text-left text-xs text-gray-500 uppercase tracking-wider">
-            <th class="px-4 py-3 font-medium">時間</th>
-            <th class="px-4 py-3 font-medium">標的</th>
-            <th class="px-4 py-3 font-medium">信號</th>
-            <th class="px-4 py-3 font-medium text-center">信心</th>
-            <th class="px-4 py-3 font-medium text-right">進場價</th>
-            <th class="px-4 py-3 font-medium text-right">5日結果</th>
-            <th class="px-4 py-3 font-medium text-center">勝負</th>
-          </tr>
-        </thead>
-        <tbody id="history-body" class="divide-y divide-gray-100">
-          <tr><td colspan="7" class="px-4 py-8 text-center text-gray-400 text-sm">暫無記錄</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- 自訂標的 -->
-  <section id="custom">
-    <h2 class="text-base font-semibold text-gray-500 uppercase tracking-widest mb-4" style="font-size:0.7rem">自訂追蹤</h2>
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
-        <span class="text-xs text-gray-400 w-16 shrink-0">台股</span>
-        <input id="ticker-tw" type="text" value="2330.TW" class="flex-1 text-sm font-medium outline-none bg-transparent" maxlength="12">
-        <button onclick="refreshTickers()" class="text-xs bg-gray-900 text-white px-2.5 py-1 rounded hover:bg-gray-700 transition">更新</button>
-      </div>
-      <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
-        <span class="text-xs text-gray-400 w-16 shrink-0">美股</span>
-        <input id="ticker-us" type="text" value="NVDA" class="flex-1 text-sm font-medium outline-none bg-transparent" maxlength="10">
-        <button onclick="refreshTickers()" class="text-xs bg-gray-900 text-white px-2.5 py-1 rounded hover:bg-gray-700 transition">更新</button>
-      </div>
-      <div class="flex items-center gap-2 border border-gray-200 rounded-lg px-3 py-2">
-        <span class="text-xs text-gray-400 w-16 shrink-0">白銀</span>
-        <input id="ticker-si" type="text" value="SI=F" class="flex-1 text-sm font-medium outline-none bg-transparent" maxlength="10">
-        <button onclick="refreshTickers()" class="text-xs bg-gray-900 text-white px-2.5 py-1 rounded hover:bg-gray-700 transition">更新</button>
-      </div>
-    </div>
-  </section>
-
-</main>
-
-<!-- 頁尾 -->
-<footer class="border-t border-gray-200 py-4 px-4 text-center text-xs text-gray-400 mt-8">
-  <p>SIGNAL v5.0 · XGBoost+COT 多周期模型 ｜ 數據僅供參考，不構成投資建議</p>
-</footer>
-
-<script>
-// ─── 配置 ───
-const S3 = 'https://gld-mms-data-richtrong.s3.ap-northeast-1.amazonaws.com/data.json';
-const LS_TW = 'sig_tw'; const LS_US = 'sig_us'; const LS_SI = 'sig_si';
-const SIG = {
-  STRONG_BUY:  { label:'強力買進', color:'#16a34a', bg:'bg-green-50', border:'border-green-500', badge:'bg-green-500', text:'text-white', icon:'▲' },
-  BUY:         { label:'買進',     color:'#16a34a', bg:'bg-green-50', border:'border-green-500', badge:'bg-green-500', text:'text-white', icon:'△' },
-  PRE_BUY:     { label:'準備買進', color:'#ca8a04', bg:'bg-yellow-50',border:'border-yellow-400',badge:'bg-yellow-400',text:'text-white',icon:'◉' },
-  HOLD:        { label:'觀望',     color:'#6b7280', bg:'bg-gray-50',  border:'border-gray-300',  badge:'bg-gray-400',  text:'text-white',icon:'—' },
-  SELL:        { label:'賣出',     color:'#dc2626', bg:'bg-red-50',   border:'border-red-500',    badge:'bg-red-500',   text:'text-white',icon:'▽' },
-  STRONG_SELL: { label:'強力賣出', color:'#dc2626', bg:'bg-red-50',   border:'border-red-500',   badge:'bg-red-500',   text:'text-white',icon:'▼' },
-};
-function sigKey(s){ if(s>=80)return'STRONG_BUY';if(s>=65)return'BUY';if(s>=55)return'PRE_BUY';if(s>=45)return'HOLD';if(s>=30)return'SELL';return'STRONG_SELL'; }
-function fmt(p){ if(!p)return'--'; return p>100?'$'+p.toLocaleString(undefined,{maximumFractionDigits:1}):'$'+p.toFixed(2); }
-
-// ─── 繪製信號卡片 ───
-function renderCard(d){
-  if(!d || d.score==null){ return `<div class="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center text-gray-400 text-sm">暫無數據</div>`; }
-  const s = SIG[sigKey(d.score)||'HOLD'];
-  const ch = d.change??0;
-  const chCls = ch>=0?'text-green-600':'text-red-600';
-  const chSign = ch>=0?'+':'';
-  const fxs = Object.entries(d.factors||{}).slice(0,4);
-  return `<div class="${s.bg} border-2 ${s.border} rounded-xl p-5 signal-pulse">
-    <div class="flex justify-between items-start mb-3">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg" style="background:var(--gold); color:#1a1200;">G</div>
       <div>
-        <div class="text-xs text-gray-400 mb-0.5">${d.ticker||d.name||'--'}</div>
-        <div class="text-lg font-bold" style="color:${s.color}">${d.name||d.ticker||'--'}</div>
-      </div>
-      <div class="text-right">
-        <div class="text-2xl font-black" style="color:${s.color}">${s.icon}</div>
-        <div class="text-xs font-semibold mt-0.5" style="color:${s.color}">${s.label}</div>
+        <div class="text-lg md:text-xl font-bold tracking-tight">SIGNAL <span class="text-[var(--muted)] font-medium text-sm">v6.0</span></div>
+        <div class="text-xs text-[var(--muted)]">黃金多周期動量系統 · XGBoost + COT</div>
       </div>
     </div>
-    <div class="text-3xl font-black text-gray-900 mb-1">${fmt(d.price)}</div>
-    <div class="text-sm ${chCls} mb-3 font-medium">${chSign}${ch.toFixed(2)}%</div>
-    <div class="flex items-center gap-2 mb-3">
-      <div class="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-        <div class="h-full rounded-full transition-all duration-1000" style="width:${d.score}%;background:${s.color}"></div>
-      </div>
-      <span class="text-xs font-bold text-gray-600 w-10 text-right">${d.score}%</span>
+    <div class="flex items-center gap-2">
+      <span id="conn-badge" class="badge">● 載入中</span>
+      <span id="last-update" class="badge mono hidden md:inline-flex">--</span>
     </div>
-    <div class="grid grid-cols-2 gap-1">${fxs.map(([k,v])=>`<div class="text-xs text-gray-500 flex justify-between px-2 py-1 bg-white/60 rounded"><span>${k}</span><span class="font-medium text-gray-700">${v}</span></div>`).join('')}</div>
-  </div>`;
-}
+  </header>
 
-// ─── 繪製信心指數 ───
-function renderConf(d, label){
-  if(!d)return`<div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-center text-xs text-gray-400">--</div>`;
-  const s=SIG[sigKey(d.score)||'HOLD'];
-  return `<div class="bg-white border ${s.border} rounded-xl p-4">
-    <div class="text-xs text-gray-400 mb-1">${label}</div>
-    <div class="text-2xl font-black text-gray-900 mb-1">${d.score??'--'}%</div>
-    <div class="text-xs font-semibold" style="color:${s.color}">${s.label}</div>
-    <div class="mt-2 h-1 bg-gray-100 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${d.score??0}%;background:${s.color}"></div></div>
-  </div>`;
-}
+  <!-- ═══════ 第一層：主訊號燈（菜鳥區）═══════ -->
+  <section id="verdict-section" class="verdict-card wait mb-6">
+    <div class="flex flex-col md:flex-row items-start md:items-center gap-5 md:gap-7">
+      <div id="verdict-dot" class="verdict-dot wait pulse-wait">？</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs uppercase tracking-[0.2em] text-[var(--muted)] mb-1">當前建議行動</div>
+        <h1 id="verdict-title" class="text-3xl md:text-5xl font-black leading-tight">先觀望</h1>
+        <p id="verdict-subtitle" class="text-sm md:text-base text-[var(--muted)] mt-2">系統載入中，請稍候。</p>
+        <div class="flex flex-wrap items-center gap-2 mt-4">
+          <span id="verdict-confidence" class="action-chip">信心 <span class="ml-1 font-bold">--</span></span>
+          <span id="verdict-stars" class="action-chip">
+            <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
+          </span>
+          <span id="verdict-regime" class="action-chip">市況 --</span>
+        </div>
+      </div>
+      <div class="text-right md:min-w-[200px]">
+        <div class="text-xs uppercase tracking-[0.2em] text-[var(--muted)] mb-1">黃金期貨</div>
+        <div id="gold-price" class="text-3xl md:text-4xl font-bold mono">--</div>
+        <div id="gold-change" class="text-sm mono mt-1">--</div>
+      </div>
+    </div>
 
-// ─── 繪製歷史 ───
-function renderHistory(rows){
-  if(!rows?.length) return`<tr><td colspan="7" class="px-4 py-8 text-center text-gray-400 text-sm">暫無記錄</td></tr>`;
-  return rows.map(r=>{
-    const s=SIG[r.signal]||SIG['HOLD'];
-    const rCls=r.result==='HIT'?'text-green-600':r.result==='MISS'?'text-red-600':'text-gray-400';
-    const rTxt=r.result==='HIT'?'✓ 命中':r.result==='MISS'?'✗ 失誤':'--';
-    return`<tr class="hover:bg-gray-50 transition">
-      <td class="px-4 py-3 text-gray-500 text-xs">${r.time||'--'}</td>
-      <td class="px-4 py-3 font-medium text-sm">${r.ticker||'--'}</td>
-      <td class="px-4 py-3"><span class="inline-block ${s.badge} ${s.text} text-xs font-bold px-2 py-0.5 rounded">${s.label}</span></td>
-      <td class="px-4 py-3 text-center text-sm font-medium">${r.confidence??'--'}%</td>
-      <td class="px-4 py-3 text-right text-sm">${r.entry?fmt(r.entry):'--'}</td>
-      <td class="px-4 py-3 text-right text-sm ${r.exit5d>0?'text-green-600':r.exit5d<0?'text-red-600':''}">${r.exit5d?(r.exit5d>0?'+':'')+r.exit5d.toFixed(1)+'%':'進行中'}</td>
-      <td class="px-4 py-3 text-center text-xs ${rCls} font-bold">${rTxt}</td>
-    </tr>`;
-  }).join('');
-}
+    <!-- 菜鳥提示：白話文解釋 -->
+    <div id="verdict-explainer" class="mt-5 pt-5 border-t border-[var(--line)] text-sm text-[var(--muted)] leading-relaxed">
+      <div class="text-[var(--txt)] font-semibold mb-1 text-base">📖 這代表什麼？</div>
+      <p id="verdict-plain"><span class="skeleton inline-block w-3/4 h-4"></span></p>
+    </div>
+  </section>
 
-// ─── 圖表 ───
-let chart=null;
-function renderChart(gold, silver){
-  const labels=['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00'];
-  const gData=(gold?.change_list||[17200,17250,17180,17300,17220,17400,17450,17500,17600]).slice(-9);
-  const sData=(silver?.change_list||[18.2,18.4,18.3,18.5,18.4,18.6,18.8,18.7,18.9]).slice(-9);
-  const ctx=document.getElementById('mainChart').getContext('2d');
-  if(chart)chart.destroy();
-  chart=new Chart(ctx,{
-    type:'line',
-    data:{
-      labels,
-      datasets:[
-        { label:'黃金', data:gData, borderColor:'#c9a46c', backgroundColor:'rgba(201,164,108,0.08)', borderWidth:2.5, tension:0.4, fill:true, pointRadius:3, pointBackgroundColor:'#c9a46c' },
-        { label:'白銀', data:sData, borderColor:'#94a3b8', backgroundColor:'rgba(148,163,184,0.06)', borderWidth:2,   tension:0.4, fill:true, pointRadius:3, pointBackgroundColor:'#94a3b8', yAxisID:'y1' }
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      interaction:{ mode:'index', intersect:false },
-      plugins:{ legend:{ position:'top', labels:{ font:{ family:"DM Sans", size:12 }, color:'#6b7280', usePointStyle:true, pointStyle:'circle', padding:20 } }},
-      scales:{
-        y:{ type:'linear', position:'left', grid:{ color:'rgba(0,0,0,0.05)' }, ticks:{ font:{ family:"DM Sans", size:11 }, color:'#9ca3af' }},
-        y1:{ type:'linear', position:'right', grid:{ drawOnChartArea:false }, ticks:{ font:{ family:"DM Sans", size:11 }, color:'#94a3b8' }},
-        x:{ grid:{ color:'rgba(0,0,0,0.03)' }, ticks:{ font:{ family:"DM Sans", size:11 }, color:'#9ca3af' }}
-      }
-    }
-  });
-}
+  <!-- ═══════ 第二層：核心數據（一般使用者）═══════ -->
+  <section class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
 
-// ─── 主更新 ───
-async function update(){
-  try{
-    const r=await fetch(S3+'?t='+Date.now());
-    if(!r.ok)throw new Error(r.status);
-    const d=await r.json();
+    <!-- 績效紀錄卡 -->
+    <div class="panel p-5 lg:col-span-1">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-sm font-semibold">📊 系統實戰紀錄</div>
+        <span class="badge">回測</span>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <div class="text-xs text-[var(--muted)] mb-1">近 20 次預測勝率</div>
+          <div class="flex items-baseline gap-2">
+            <span id="winrate-num" class="text-3xl font-black mono">--</span>
+            <span class="text-sm text-[var(--muted)]">%</span>
+            <span id="winrate-tag" class="badge ml-auto">--</span>
+          </div>
+          <div class="progress-bar mt-2"><div id="winrate-bar" class="progress-fill" style="width:0%; background:var(--buy);"></div></div>
+        </div>
+        <div class="grid grid-cols-3 gap-3 pt-3 border-t border-[var(--line)]">
+          <div>
+            <div class="text-[11px] text-[var(--muted)]">樣本數</div>
+            <div id="bt-samples" class="mono font-bold mt-0.5">--</div>
+          </div>
+          <div>
+            <div class="text-[11px] text-[var(--muted)]">Sharpe</div>
+            <div id="bt-sharpe" class="mono font-bold mt-0.5">--</div>
+          </div>
+          <div>
+            <div class="text-[11px] text-[var(--muted)]">最大回撤</div>
+            <div id="bt-mdd" class="mono font-bold mt-0.5">--</div>
+          </div>
+        </div>
+        <p class="text-[11px] text-[var(--muted)] leading-relaxed pt-2 border-t border-[var(--line)]">
+          ⚠️ 過往績效不保證未來收益。本系統僅供研究參考，非投資建議。
+        </p>
+      </div>
+    </div>
 
-    // 狀態
-    document.querySelector('#live-status span:first-child').className='w-2 h-2 rounded-full bg-green-500';
-    document.querySelector('#live-status span:last-child').textContent='已連線';
+    <!-- 趨勢圖 -->
+    <div class="panel p-5 lg:col-span-2">
+      <div class="flex items-center justify-between mb-4">
+        <div class="text-sm font-semibold">📈 黃金 / 白銀走勢</div>
+        <div class="flex gap-2 text-[11px]">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full" style="background:var(--gold);"></span>黃金</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full" style="background:#9ca3af;"></span>白銀</span>
+        </div>
+      </div>
+      <div class="relative h-48 md:h-56">
+        <canvas id="trend-chart"></canvas>
+      </div>
+    </div>
 
-    // 信號卡片：黃金 + 台股
-    const twT=localStorage.getItem(LS_TW)||'2330.TW';
-    const usT=localStorage.getItem(LS_US)||'NVDA';
-    const siT=localStorage.getItem(LS_SI)||'SI=F';
-    const cards=[
-      d.assets?.gold||{name:'黃金',ticker:'GC=F',score:d.score??50,price:d.gold?.price,change:d.gold?.change??0,
-        factors:{'XGBoost':(d.score??'--')+'%','ETF流向':d.smart_money?.etf_flow||'--','COT報告':d.smart_money?.cot_report||'--'}},
-      d.assets?.tw?.score!=null ? d.assets.tw : {name:twT.replace('.TW',''),ticker:twT,score:d.assets?.tw?.score??null,
-        price:d.assets?.tw?.price,change:d.assets?.tw?.change??0,factors:d.assets?.tw?.factors||{}}
-    ];
-    document.getElementById('signal-cards').innerHTML=cards.map(c=>renderCard(c)).join('');
+  </section>
 
-    // 信心指數
-    const conf=[d.assets?.gold||null, d.assets?.tw||null, d.assets?.us||null];
-    document.getElementById('conf-cards').innerHTML=[
-      renderConf(conf[0],'黃金 GC=F'),
-      renderConf(conf[1],'台股 '+localStorage.getItem(LS_TW)||'2330.TW'),
-      renderConf(conf[2],'美股 '+localStorage.getItem(LS_US)||'NVDA')
-    ].join('');
+  <!-- ═══════ 第三層：進階分析（可摺疊）═══════ -->
+  <section class="panel mb-6">
+    <details>
+      <summary class="p-5 flex items-center justify-between hover:bg-[var(--panel-2)] rounded-t-2xl">
+        <div class="flex items-center gap-3">
+          <span class="chev text-[var(--muted)]">▶</span>
+          <span class="text-sm font-semibold">🔬 AI 模型進階分析</span>
+          <span class="badge">XGBoost · COT · 多時框</span>
+        </div>
+        <span class="text-xs text-[var(--muted)]">點擊展開</span>
+      </summary>
+      <div class="px-5 pb-5 pt-0 border-t border-[var(--line)] space-y-5">
 
-    // 歷史
-    if(d.history) document.getElementById('history-body').innerHTML=renderHistory(d.history);
+        <!-- XGBoost 機率條 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-5">
+          <div class="panel-2 p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold">XGBoost 上漲機率</span>
+              <span id="prob-up" class="mono font-bold text-[var(--buy)]">--%</span>
+            </div>
+            <div class="progress-bar"><div id="prob-up-bar" class="progress-fill" style="width:0%; background:var(--buy);"></div></div>
+            <div class="text-[11px] text-[var(--muted)] mt-2" id="prob-up-tag">--</div>
+          </div>
+          <div class="panel-2 p-4">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-semibold">XGBoost 下跌機率</span>
+              <span id="prob-dn" class="mono font-bold text-[var(--sell)]">--%</span>
+            </div>
+            <div class="progress-bar"><div id="prob-dn-bar" class="progress-fill" style="width:0%; background:var(--sell);"></div></div>
+            <div class="text-[11px] text-[var(--muted)] mt-2" id="prob-dn-tag">--</div>
+          </div>
+        </div>
 
-    // 圖表
-    renderChart(d.assets?.gold, d.assets?.silver);
+        <!-- COT + Smart Money 兩欄 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="panel-2 p-4">
+            <div class="text-xs font-semibold mb-3">📋 COT 大戶持倉（CFTC）</div>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between"><span class="text-[var(--muted)]">投機商淨多倉 OI%</span><span id="cot-spec" class="mono font-bold">--</span></div>
+              <div class="flex justify-between"><span class="text-[var(--muted)]">多空比 (LS Ratio)</span><span id="cot-ls" class="mono font-bold">--</span></div>
+              <div class="flex justify-between"><span class="text-[var(--muted)]">本週變化</span><span id="cot-chg" class="mono font-bold">--</span></div>
+            </div>
+            <div id="cot-verdict" class="mt-3 text-[11px] text-[var(--muted)] pt-2 border-t border-[var(--line)]">--</div>
+          </div>
+          <div class="panel-2 p-4">
+            <div class="text-xs font-semibold mb-3">💰 GLD ETF 聰明錢流向</div>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between"><span class="text-[var(--muted)]">5 日資金流向</span><span id="sm-flow" class="mono font-bold">--</span></div>
+              <div class="flex justify-between"><span class="text-[var(--muted)]">趨勢</span><span id="sm-trend" class="mono font-bold">--</span></div>
+              <div class="flex justify-between"><span class="text-[var(--muted)]">Smart Money 評分</span><span id="sm-score" class="mono font-bold">--</span></div>
+            </div>
+            <div id="sm-verdict" class="mt-3 text-[11px] text-[var(--muted)] pt-2 border-t border-[var(--line)]">--</div>
+          </div>
+        </div>
 
-    // 更新時間
-    const ts=d.timestamp?new Date(d.timestamp).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'--';
-    document.querySelector('footer p').textContent=`SIGNAL v5.0 · XGBoost+COT · 最後更新：${ts} ｜ 數據僅供參考，不構成投資建議`;
-  }catch(e){
-    document.querySelector('#live-status span:first-child').className='w-2 h-2 rounded-full bg-red-500';
-    document.querySelector('#live-status span:last-child').textContent='連線失敗';
-    console.error(e);
+        <!-- 訊號明細表 -->
+        <div class="panel-2 p-4">
+          <div class="text-xs font-semibold mb-3">📑 多時框訊號明細</div>
+          <table class="signals-tbl">
+            <thead><tr><th>時框</th><th>方向</th><th>分數</th><th>價格</th><th class="hidden md:table-cell">VWAP偏移</th></tr></thead>
+            <tbody id="signals-tbody"><tr><td colspan="5" class="text-center text-[var(--muted)] py-4">載入中...</td></tr></tbody>
+          </table>
+        </div>
+
+      </div>
+    </details>
+  </section>
+
+  <!-- 自訂追蹤 -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="panel p-4" id="card-silver">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-xs text-[var(--muted)]">白銀期貨 SI=F</div>
+        <span class="text-xl">🥈</span>
+      </div>
+      <div class="text-2xl font-bold mono" data-field="price">--</div>
+      <div class="text-sm mono mt-1" data-field="change">--</div>
+    </div>
+    <div class="panel p-4" id="card-tw">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-xs text-[var(--muted)]">台股 <span id="tw-ticker">2330.TW</span></div>
+        <span class="text-xl">🇹🇼</span>
+      </div>
+      <div class="text-2xl font-bold mono" data-field="price">--</div>
+      <div class="text-sm mono mt-1" data-field="change">--</div>
+    </div>
+    <div class="panel p-4" id="card-us">
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-xs text-[var(--muted)]">美股 <span id="us-ticker">NVDA</span></div>
+        <span class="text-xl">🇺🇸</span>
+      </div>
+      <div class="text-2xl font-bold mono" data-field="price">--</div>
+      <div class="text-sm mono mt-1" data-field="change">--</div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="text-center text-[11px] text-[var(--muted)] py-4 leading-relaxed">
+    <div>SIGNAL v6.0 · XGBoost + COT + Multi-Timeframe Consensus</div>
+    <div class="mt-1">資料來源：yfinance / CFTC / FRED · 由 update_gld_data.py 每 ~3.5 小時自動更新</div>
+    <div class="mt-1 opacity-70">本系統為教育研究用途，不構成投資建議。投資有風險，入市請謹慎。</div>
+  </footer>
+
+</div>
+
+<!-- ═══════ 渲染邏輯 ═══════ -->
+<script>
+(function () {
+  'use strict';
+
+  const D = window.AUTO_DATA;
+  const $  = (s) => document.querySelector(s);
+  const $$ = (s) => document.querySelectorAll(s);
+
+  function fmtNum(v, d=2) {
+    if (v === null || v === undefined || isNaN(v)) return '--';
+    return Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   }
-}
+  function fmtPct(v, d=2, sign=true) {
+    if (v === null || v === undefined || isNaN(v)) return '--';
+    const s = sign && v > 0 ? '+' : '';
+    return s + Number(v).toFixed(d) + '%';
+  }
+  function colorByVal(v) {
+    if (v > 0) return 'var(--buy)';
+    if (v < 0) return 'var(--sell)';
+    return 'var(--muted)';
+  }
 
-function refreshTickers(){
-  const tw=document.getElementById('ticker-tw').value.trim().toUpperCase();
-  const us=document.getElementById('ticker-us').value.trim().toUpperCase();
-  const si=document.getElementById('ticker-si').value.trim().toUpperCase();
-  if(tw) localStorage.setItem(LS_TW,tw.includes('.TW')?tw:tw+'.TW');
-  if(us) localStorage.setItem(LS_US,us);
-  if(si) localStorage.setItem(LS_SI,si.includes('=')?si:si);
-  update();
-}
+  // ─────────── 主訊號決策 ───────────
+  // 整合 lambda XGBoost + multi-timeframe signals 共識
+  function deriveVerdict(d) {
+    if (!d) return { kind: 'wait', confidence: 0, plain: '系統暫無資料，請稍候自動更新。' };
 
-// 初始化輸入框
-document.getElementById('ticker-tw').value=localStorage.getItem(LS_TW)||'2330.TW';
-document.getElementById('ticker-us').value=localStorage.getItem(LS_US)||'NVDA';
-document.getElementById('ticker-si').value=localStorage.getItem(LS_SI)||'SI=F';
+    const lb     = d.lambda || {};
+    const probUp = Number(lb.prob_up ?? 50);
+    const probDn = Number(lb.prob_dn ?? 50);
+    const sigs   = d.signals || {};
 
-// 即時時鐘
-function tick(){ document.getElementById('live-time').textContent=new Date().toLocaleTimeString('zh-TW',{hour12:false}); }
-tick(); setInterval(tick,1000);
-update(); setInterval(update,60000);
+    // 多時框共識：BUY 計分
+    let buyVotes = 0, sellVotes = 0, totalVotes = 0;
+    for (const [tf, s] of Object.entries(sigs)) {
+      if (!s || !s.signal) continue;
+      totalVotes++;
+      if (String(s.signal).includes('BUY'))  buyVotes++;
+      if (String(s.signal).includes('SELL')) sellVotes++;
+    }
+
+    // 決策：XGBoost 機率主導 + 多時框共識輔助
+    let kind = 'wait';
+    let confidence = 50;
+    let plain = '';
+
+    const dominantProb = Math.max(probUp, probDn);
+
+    if (probUp >= 60 && buyVotes >= sellVotes) {
+      kind = 'buy';
+      confidence = probUp;
+      plain = `AI 模型判斷上漲機率 ${probUp.toFixed(0)}%，且 ${totalVotes} 個時間框架中有 ${buyVotes} 個顯示買進信號。建議可考慮分批進場。`;
+    } else if (probDn >= 60 && sellVotes >= buyVotes) {
+      kind = 'sell';
+      confidence = probDn;
+      plain = `AI 模型判斷下跌機率 ${probDn.toFixed(0)}%，且 ${totalVotes} 個時間框架中有 ${sellVotes} 個顯示賣出信號。建議可考慮減倉或避險。`;
+    } else {
+      kind = 'wait';
+      confidence = 100 - Math.abs(probUp - probDn);
+      plain = `AI 模型判斷上漲 ${probUp.toFixed(0)}% / 下跌 ${probDn.toFixed(0)}%，方向尚未明朗。建議觀望，等待更明確訊號出現。`;
+    }
+
+    return { kind, confidence, plain, probUp, probDn, buyVotes, sellVotes, totalVotes };
+  }
+
+  function stars(conf) {
+    // 信心 50–100 → 1–5 星
+    const n = Math.max(1, Math.min(5, Math.round((conf - 50) / 10)));
+    return Array.from({ length: 5 }, (_, i) => `<span class="star ${i < n ? 'on' : ''}">★</span>`).join('');
+  }
+
+  function regimeLabel(r) {
+    if (!r) return '--';
+    const map = { 'trending_up': '📈 上升趨勢', 'trending_down': '📉 下降趨勢', 'ranging': '〰️ 區間震盪', 'high_volatility': '⚡ 高波動', 'normal': '平穩' };
+    return map[r] || r;
+  }
+
+  function renderVerdict(d) {
+    const v = deriveVerdict(d);
+    const sec = $('#verdict-section');
+    const dot = $('#verdict-dot');
+    sec.classList.remove('buy','sell','wait');
+    dot.classList.remove('buy','sell','wait','pulse-buy','pulse-sell','pulse-wait');
+    sec.classList.add(v.kind);
+    dot.classList.add(v.kind, `pulse-${v.kind}`);
+
+    const titles = { buy: '現在該買進', sell: '現在該賣出', wait: '先觀望' };
+    const icons  = { buy: '↑', sell: '↓', wait: '—' };
+    const subs   = {
+      buy:  '系統綜合 XGBoost 機率與多時框共識，判定當前為偏多訊號。',
+      sell: '系統綜合 XGBoost 機率與多時框共識，判定當前為偏空訊號。',
+      wait: '訊號不明確或互相抵消，建議保留現金或既有倉位。',
+    };
+
+    dot.textContent = icons[v.kind];
+    $('#verdict-title').textContent = titles[v.kind];
+    $('#verdict-subtitle').textContent = subs[v.kind];
+    $('#verdict-confidence').innerHTML = `信心 <span class="ml-1 font-bold mono">${v.confidence.toFixed(0)}%</span>`;
+    $('#verdict-stars').innerHTML = stars(v.confidence);
+    $('#verdict-regime').textContent = `市況 ${regimeLabel(d.regime)}`;
+    $('#verdict-plain').textContent = v.plain;
+  }
+
+  // ─────────── 黃金主價格 ───────────
+  function renderPrice(d) {
+    const sigs = d.signals || {};
+    // 取任一時框的 price 作為當前價（優先 4H）
+    const tf = sigs['4H'] || sigs['1D'] || sigs['1H'] || Object.values(sigs)[0] || {};
+    const price = tf.price;
+    if (price) {
+      $('#gold-price').textContent = '$' + fmtNum(price, 1);
+    }
+    // 對照昨收推算漲跌
+    const daily = d.daily || {};
+    const chg = daily.change_pct;
+    if (chg !== undefined && chg !== null) {
+      const el = $('#gold-change');
+      el.textContent = fmtPct(chg);
+      el.style.color = colorByVal(chg);
+    }
+  }
+
+  // ─────────── 績效紀錄 ───────────
+  function renderPerformance(d) {
+    const wr = d.win_rate_20;
+    const bt = d.backtest || {};
+
+    if (wr !== null && wr !== undefined) {
+      $('#winrate-num').textContent = wr;
+      $('#winrate-bar').style.width = Math.min(100, wr) + '%';
+      const tag = wr >= 60 ? '優秀' : wr >= 50 ? '中性' : '需觀察';
+      $('#winrate-tag').textContent = tag;
+      $('#winrate-bar').style.background = wr >= 60 ? 'var(--buy)' : wr >= 50 ? 'var(--wait)' : 'var(--sell)';
+    } else {
+      $('#winrate-num').textContent = '--';
+      $('#winrate-tag').textContent = '樣本累積中';
+    }
+
+    $('#bt-samples').textContent = bt.total_signals ?? bt.sample_size ?? '--';
+    $('#bt-sharpe').textContent  = bt.sharpe !== undefined ? Number(bt.sharpe).toFixed(2) : '--';
+    $('#bt-mdd').textContent     = bt.max_drawdown !== undefined ? fmtPct(bt.max_drawdown, 1) : '--';
+  }
+
+  // ─────────── 趨勢圖 ───────────
+  let chart;
+  function renderChart(d) {
+    const ctx = document.getElementById('trend-chart');
+    if (!ctx) return;
+    const daily = d.daily || {};
+    const goldHistory = daily.history || daily.prices || [];
+    // 若沒有歷史序列，用空陣列佔位
+    const labels = goldHistory.map((_, i) => i === goldHistory.length-1 ? '今天' : `${goldHistory.length-1-i}d`);
+    const goldData = goldHistory.map(p => typeof p === 'object' ? p.close : p);
+
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '黃金 (GC=F)',
+          data: goldData,
+          borderColor: 'rgba(212,175,55,0.95)',
+          backgroundColor: 'rgba(212,175,55,0.08)',
+          fill: true, tension: 0.35, pointRadius: 0, borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#7c8aa8', font: { size: 10 } } },
+          y: { grid: { color: 'rgba(31,40,66,0.6)' }, ticks: { color: '#7c8aa8', font: { size: 10 } } }
+        }
+      }
+    });
+  }
+
+  // ─────────── 進階區 ───────────
+  function renderAdvanced(d) {
+    const lb = d.lambda || {};
+    const pu = Number(lb.prob_up ?? 0);
+    const pd = Number(lb.prob_dn ?? 0);
+    $('#prob-up').textContent = pu.toFixed(0) + '%';
+    $('#prob-dn').textContent = pd.toFixed(0) + '%';
+    $('#prob-up-bar').style.width = pu + '%';
+    $('#prob-dn-bar').style.width = pd + '%';
+    $('#prob-up-tag').textContent = pu >= 60 ? '高機率上漲訊號' : pu >= 50 ? '輕微偏多' : '無偏多訊號';
+    $('#prob-dn-tag').textContent = pd >= 60 ? '高機率下跌訊號' : pd >= 50 ? '輕微偏空' : '無偏空訊號';
+
+    const cot = (d.macro && d.macro.cot_gold) || {};
+    $('#cot-spec').textContent = cot.spec_net_pct !== undefined ? cot.spec_net_pct + '%' : '--';
+    $('#cot-ls').textContent   = cot.spec_ls_ratio ?? '--';
+    $('#cot-chg').textContent  = cot.weekly_change ?? cot.change ?? '--';
+    if (cot.spec_net_pct !== undefined) {
+      $('#cot-verdict').textContent = cot.spec_net_pct > 30 ? '大戶高度偏多，但需注意過熱反轉風險' :
+                                       cot.spec_net_pct > 10 ? '大戶溫和偏多' :
+                                       cot.spec_net_pct < -10 ? '大戶偏空' : '大戶部位中性';
+    }
+
+    const sm = lb.smart_money || {};
+    $('#sm-flow').textContent  = sm.flow_5d ?? sm.flow ?? '--';
+    $('#sm-trend').textContent = sm.trend ?? '--';
+    $('#sm-score').textContent = sm.score !== undefined ? Number(sm.score).toFixed(1) : '--';
+    if (sm.trend) {
+      $('#sm-verdict').textContent = String(sm.trend).includes('流入') ? '聰明錢持續流入，支撐金價' :
+                                      String(sm.trend).includes('流出') ? '聰明錢撤離，金價承壓' : '資金面中性';
+    }
+
+    // 訊號表
+    const tbody = $('#signals-tbody');
+    const sigs = d.signals || {};
+    const rows = Object.entries(sigs).map(([tf, s]) => {
+      if (!s) return '';
+      const sig = String(s.signal || '--');
+      const color = sig.includes('BUY') ? 'var(--buy)' : sig.includes('SELL') ? 'var(--sell)' : 'var(--muted)';
+      const arrow = sig.includes('BUY') ? '▲' : sig.includes('SELL') ? '▼' : '◆';
+      return `<tr>
+        <td class="font-semibold">${tf}</td>
+        <td style="color:${color}; font-weight:700;">${arrow} ${sig}</td>
+        <td class="mono">${s.score !== undefined ? Number(s.score).toFixed(1) : '--'}</td>
+        <td class="mono">${s.price !== undefined ? '$'+fmtNum(s.price, 1) : '--'}</td>
+        <td class="mono hidden md:table-cell">${s.vwap_dev !== undefined ? fmtPct(s.vwap_dev, 2) : '--'}</td>
+      </tr>`;
+    }).filter(Boolean).join('');
+    tbody.innerHTML = rows || '<tr><td colspan="5" class="text-center text-[var(--muted)] py-4">無訊號資料</td></tr>';
+  }
+
+  // ─────────── 自訂追蹤 ───────────
+  function renderAssets(d) {
+    const a = d.assets || {};
+    const fill = (id, obj) => {
+      const card = document.getElementById(id);
+      if (!card || !obj) return;
+      const p = card.querySelector('[data-field="price"]');
+      const c = card.querySelector('[data-field="change"]');
+      if (p && obj.price !== undefined) p.textContent = '$' + fmtNum(obj.price, 2);
+      if (c && obj.change !== undefined) {
+        c.textContent = fmtPct(obj.change);
+        c.style.color = colorByVal(obj.change);
+      }
+    };
+    fill('card-silver', a.silver);
+    fill('card-tw', a.tw);
+    fill('card-us', a.us);
+  }
+
+  // ─────────── 連線狀態 ───────────
+  function renderStatus(d) {
+    const badge = $('#conn-badge');
+    const lu = $('#last-update');
+    if (!d || !d.timestamp) {
+      badge.textContent = '● 無資料';
+      badge.style.color = 'var(--sell)';
+      return;
+    }
+    const ts = new Date(d.timestamp);
+    const ageMin = (Date.now() - ts.getTime()) / 60000;
+    const fresh = ageMin < 240; // 4 hours
+    badge.textContent = fresh ? '● 已連線' : '● 資料過舊';
+    badge.style.color = fresh ? 'var(--buy)' : 'var(--wait)';
+    lu.textContent = ts.toLocaleString('zh-TW', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ─────────── 主入口 ───────────
+  function render() {
+    const d = window.AUTO_DATA;
+    if (!d) {
+      $('#verdict-plain').textContent = '⏳ 等待 update_gld_data.py 注入資料。如果你看到這段文字超過 4 小時，代表自動化流程出錯，請檢查 GitHub Actions。';
+      $('#conn-badge').textContent = '● 等待資料';
+      $('#conn-badge').style.color = 'var(--wait)';
+      return;
+    }
+    try {
+      renderStatus(d);
+      renderVerdict(d);
+      renderPrice(d);
+      renderPerformance(d);
+      renderChart(d);
+      renderAdvanced(d);
+      renderAssets(d);
+    } catch (e) {
+      console.error('Render error:', e);
+      $('#verdict-plain').textContent = '渲染錯誤：' + e.message;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', render);
+})();
 </script>
+
 </body>
 </html>
