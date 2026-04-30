@@ -946,7 +946,7 @@ class GldMmsUpdaterV6:
             dj = json.dumps(data, cls=NumpyEncoder)
             new_c = (
                 content[:si]
-                + f'{sm}const AUTO_DATA = {dj};{em}'
+                + f'{sm}window.AUTO_DATA = {dj};{em}'
                 + content[ei + len(em):]
             )
             with open(html_file, 'w', encoding='utf-8') as f:
