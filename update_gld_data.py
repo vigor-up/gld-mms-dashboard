@@ -608,7 +608,7 @@ class GldMmsUpdaterV6:
         }
 
     def calculate_signals(self):
-        PUSH = 78
+        PUSH = 80
         signals = {}
 
         lb_score = self.lb_result.get('score', None)
@@ -983,6 +983,29 @@ def main():
     updater._fetch_daily('GC=F', '黃金日線')
     updater._fetch_cross_asset()
     updater.fetch_macro()
+
+    # ── XGBoost 高信心觸發推播 (≥80%) ─────────────────
+    # 只要 Lambda XGBoost 模型對單一方向信心 >=80%，無論其他訊號如何都推播
+    try:
+        _pu = float(updater.lb_result.get('prob_up', 0) or 0)
+        _pd = float(updater.lb_result.get('prob_dn', 0) or 0)
+        _lb_score = updater.lb_result.get('score', '?')
+        _lb_signal = updater.lb_result.get('signal', '?')
+        if _pu >= 80:
+            updater.send_push(
+                f"📈 黃金 XGBoost 高信心買進！{_pu:.0f}%",
+                f"上漲機率 {_pu:.0f}% | AI評分 {_lb_score} | 信號 {_lb_signal}",
+                is_leading=True
+            )
+        elif _pd >= 80:
+            updater.send_push(
+                f"📉 黃金 XGBoost 高信心賣出！{_pd:.0f}%",
+                f"下跌機率 {_pd:.0f}% | AI評分 {_lb_score} | 信號 {_lb_signal}",
+                is_leading=True
+            )
+    except Exception as _e:
+        print(f"[WARN] 高信心推播檢查失敗: {_e}")
+
     updater.update_html(args.html)
 
 if __name__ == '__main__':
