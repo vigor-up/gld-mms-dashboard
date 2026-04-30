@@ -23,6 +23,8 @@ import numpy as np
 # ── 白銀/台股/美股 Simple Asset Fetcher ───────────────────
 TW_TICKER = os.environ.get('TW_TICKER', '2330.TW')
 US_TICKER = os.environ.get('US_TICKER', 'NVDA')
+TW_NAME   = os.environ.get('TW_NAME',   '台積電')
+US_NAME   = os.environ.get('US_NAME',   'NVIDIA')
 
 def get_asset_data(ticker):
     try:
@@ -372,6 +374,88 @@ class GldMmsUpdaterV6:
             except Exception as e:
                 print(f"[WARN] {name}: {e}")
 
+    def _calc_simple_signal_for_ticker(self, ticker, name, gld_history=None):
+        """為任意 ticker 計算簡化版訊號（給自選股用）"""
+        try:
+            try:
+                hist = yf.Ticker(ticker).history(period='90d', interval='1d')
+            except Exception as e:
+                print(f"[WARN] 自選股 {ticker} 抓資料失敗: {e}")
+                return None
+            if hist is None or hist.empty or len(hist) < 20:
+                print(f"[WARN] 自選股 {ticker} 資料不足")
+                return None
+            if isinstance(hist.columns, pd.MultiIndex):
+                hist.columns = [str(c[0]) for c in hist.columns]
+            if 'Close' not in hist.columns:
+                return None
+            hist['Close'] = pd.to_numeric(hist['Close'], errors='coerce')
+            hist = hist.dropna(subset=['Close'])
+            if len(hist) < 20:
+                return None
+            close = hist['Close'].astype(float)
+
+            ma20 = close.rolling(20).mean().iloc[-1]
+            ma50 = close.rolling(50).mean().iloc[-1] if len(close) >= 50 else None
+            delta = close.diff()
+            gain = delta.where(delta > 0, 0).rolling(14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+            rs = gain / loss.replace(0, np.nan)
+            rsi = (100 - 100 / (1 + rs)).iloc[-1]
+            mom_pct = (close.iloc[-1] / close.iloc[-min(10, len(close)-1)] - 1) * 100
+
+            cur = float(close.iloc[-1])
+            prev = float(close.iloc[-2]) if len(close) > 1 else cur
+            change = round((cur - prev) / prev * 100, 2) if prev else 0.0
+
+            corr = None
+            if gld_history is not None and len(gld_history) >= 20 and len(close) >= 20:
+                gld_ret = pd.Series(gld_history[-30:]).pct_change().dropna()
+                this_ret = close[-30:].pct_change().dropna()
+                ml = min(len(gld_ret), len(this_ret))
+                if ml >= 10:
+                    corr = float(pd.Series(this_ret.values[-ml:]).corr(
+                        pd.Series(gld_ret.values[-ml:])))
+
+            score = 0
+            if not pd.isna(rsi):
+                if rsi < 30: score += 30
+                elif rsi < 45: score += 15
+                elif rsi > 70: score -= 30
+                elif rsi > 55: score -= 15
+            if ma50 is not None and not pd.isna(ma20):
+                if cur > ma20 > ma50: score += 25
+                elif cur > ma20: score += 10
+                elif cur < ma20 < ma50: score -= 25
+                elif cur < ma20: score -= 10
+            if not pd.isna(mom_pct):
+                if mom_pct > 5: score += 20
+                elif mom_pct > 2: score += 10
+                elif mom_pct < -5: score -= 20
+                elif mom_pct < -2: score -= 10
+
+            if score >= 30:    sig, conf = 'BUY', min(95, 50 + score)
+            elif score >= 15:  sig, conf = 'WEAK_BUY', min(85, 50 + score)
+            elif score <= -30: sig, conf = 'SELL', min(95, 50 + abs(score))
+            elif score <= -15: sig, conf = 'WEAK_SELL', min(85, 50 + abs(score))
+            else:              sig, conf = 'WAIT', 50 + abs(score) // 2
+
+            return {
+                'ticker': ticker, 'name': name,
+                'price': round(cur, 2), 'change': change,
+                'signal': sig, 'confidence': int(conf),
+                'rsi':  round(float(rsi), 1) if not pd.isna(rsi) else None,
+                'ma20': round(float(ma20), 2) if not pd.isna(ma20) else None,
+                'ma50': round(float(ma50), 2) if ma50 is not None and not pd.isna(ma50) else None,
+                'momentum': round(float(mom_pct), 2) if not pd.isna(mom_pct) else None,
+                'correlation': round(corr, 2) if corr is not None and not pd.isna(corr) else None,
+                'history': [round(float(x), 2) for x in close.tail(30).tolist()],
+                'score': int(score),
+            }
+        except Exception as e:
+            print(f"[WARN] 自選股訊號 {ticker}: {e}")
+            return None
+
     @staticmethod
     def _rsi_fast(series: pd.Series, n: int) -> pd.Series:
         d = series.diff()
@@ -595,6 +679,23 @@ class GldMmsUpdaterV6:
         lb_score = self.lb_result.get('score', None)
         if lb_score is None:
             return {}
+        # 為自選股相關性計算準備 GLD 30 日 close 序列
+        gold_history = []
+        try:
+            if 'GC=F' in self.daily and self.daily['GC=F']:
+                gold_history = [float(r.get('close', 0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
+            if not gold_history:
+                _gh = yf.Ticker('GLD').history(period='90d', interval='1d')
+                if _gh is not None and not _gh.empty:
+                    if isinstance(_gh.columns, pd.MultiIndex):
+                        _gh.columns = [str(c[0]) for c in _gh.columns]
+                    if 'Close' in _gh.columns:
+                        _gh['Close'] = pd.to_numeric(_gh['Close'], errors='coerce')
+                        _gh = _gh.dropna(subset=['Close'])
+                        gold_history = [round(float(x), 2) for x in _gh['Close'].tail(30).tolist()]
+        except Exception as e:
+            print(f"[WARN] 黃金歷史走勢抓取失敗: {e}")
+
         cot = self.macro.get('cot_gold', {})
         cot_bias = cot.get('score_add', 0)
         combined = round(max(0, min(100, lb_score + cot_bias)))
@@ -960,9 +1061,14 @@ class GldMmsUpdaterV6:
             'version':      'v6.0 Top-10%-Model',
             'regime':       self.regime,
             'assets': {
-                'silver': get_asset_data('SI=F'),
-                'tw':     get_asset_data(TW_TICKER),
-                'us':     get_asset_data(US_TICKER),
+                'silver': self._calc_simple_signal_for_ticker('SI=F',     '白銀',       gold_history) or get_asset_data('SI=F'),
+                'tw':     self._calc_simple_signal_for_ticker(TW_TICKER, TW_NAME,      gold_history) or get_asset_data(TW_TICKER),
+                'us':     self._calc_simple_signal_for_ticker(US_TICKER, US_NAME,      gold_history) or get_asset_data(US_TICKER),
+            },
+            'gold_history': gold_history,
+            'tickers_meta': {
+                'tw': {'ticker': TW_TICKER, 'name': TW_NAME},
+                'us': {'ticker': US_TICKER, 'name': US_NAME},
             },
             'daily':        self.daily,
             'macro':        self.macro,
