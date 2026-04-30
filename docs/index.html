@@ -567,29 +567,35 @@
   <div id="ticker-modal" class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center p-0 sm:p-4" style="background: rgba(10,10,10,0.5); backdrop-filter: blur(6px);">
     <div class="card w-full max-w-sm rounded-t-3xl sm:rounded-3xl overflow-hidden">
       <div class="p-5">
-        <div class="flex items-start justify-between mb-4">
-          <h2 class="text-xl font-black tracking-tight" id="ticker-modal-title">設定自選股</h2>
+        <div class="flex items-start justify-between mb-3">
+          <h2 class="text-xl font-black tracking-tight" id="ticker-modal-title">當前自選股</h2>
           <button id="ticker-modal-close" class="text-[var(--muted)] text-2xl leading-none">×</button>
         </div>
-        <label class="text-[11px] font-bold text-[var(--ink-2)] block mb-1">Yahoo Finance Ticker</label>
-        <input id="ticker-input" type="text" class="w-full text-base font-mono px-3 py-2.5 border-2 border-[var(--hairline-strong)] rounded-xl focus:border-[var(--ink)] outline-none" placeholder="ex: 2330.TW">
-        <div class="text-[11px] text-[var(--muted)] mt-2 leading-relaxed">
-          台股要加 <code class="bg-gray-100 px-1 rounded">.TW</code>（如 <code class="bg-gray-100 px-1 rounded">2330.TW</code>），美股直接打代碼（<code class="bg-gray-100 px-1 rounded">NVDA</code>）。
+
+        <div class="card-flat p-3.5 mb-3">
+          <div class="text-[10px] font-extrabold uppercase tracking-wider text-[var(--ink-2)] mb-1.5">Yahoo Ticker</div>
+          <div id="ticker-current" class="text-xl font-extrabold mono">--</div>
+          <div class="text-[10px] font-extrabold uppercase tracking-wider text-[var(--ink-2)] mt-3 mb-1.5">顯示名稱</div>
+          <div id="name-current" class="text-base font-bold">--</div>
         </div>
-        <label class="text-[11px] font-bold text-[var(--ink-2)] block mb-1 mt-3">顯示名稱（可選）</label>
-        <input id="name-input" type="text" class="w-full text-base px-3 py-2.5 border-2 border-[var(--hairline-strong)] rounded-xl focus:border-[var(--ink)] outline-none" placeholder="ex: 台積電">
-        <div id="ticker-msg" class="text-[11px] mt-3 hidden font-medium" style="color: var(--wait-deep);"></div>
-        <button id="ticker-save" class="w-full mt-4 bg-[var(--ink)] text-white font-bold py-3 rounded-xl active:scale-[0.98] transition">儲存（下次更新生效）</button>
-        <div class="text-[10px] text-[var(--muted)] mt-3 text-center">⏱️ 訊號每 15 分鐘自動重算，改完 ticker 需等 1–15 分鐘</div>
+
+        <div class="p-3 rounded-xl text-[12px] leading-relaxed" style="background: var(--wait-tint); border: 1px solid var(--wait-bg); color: var(--wait-deep);">
+          <strong>📋 共用設定</strong>：本站所有訪客看到的是同一組 ticker。要更換請站長到 GitHub 修改 <code class="bg-white px-1 rounded">workflow yml</code>。
+        </div>
+
+        <a id="edit-yml-link" href="https://github.com/vigor-up/gld-mms-dashboard/edit/main/.github/workflows/update-dashboard.yml" target="_blank" rel="noopener" class="block w-full mt-4 bg-[var(--ink)] text-white text-center font-bold py-3 rounded-xl active:scale-[0.98] transition">
+          → 在 GitHub 修改 ticker
+        </a>
+        <div class="text-[10px] text-[var(--muted)] mt-2.5 text-center leading-relaxed">改 yml 並 commit 後，下次 workflow（每 15 分）會生效</div>
       </div>
     </div>
   </div>
 
   <!-- Footer -->
   <footer class="text-center text-[11px] text-[var(--muted)] leading-relaxed pt-4 border-t border-[var(--hairline)]">
-    <div class="font-bold text-[var(--ink-2)] mb-1">SIGNAL v6.0</div>
+    <div class="font-bold text-[var(--ink-2)] mb-1">SIGNAL v6.0 · 由 vigor-up 維護</div>
     <div>XGBoost + COT + Multi-Timeframe</div>
-    <div>每 15 分鐘自動更新</div>
+    <div>每 15 分鐘自動更新 · 開放分享閱讀</div>
     <div class="mt-1.5 mono" id="last-update-text">--</div>
     <div class="mt-3 text-[10px] opacity-60 px-4 leading-relaxed">
       本系統為教育研究用途，不構成投資建議。投資有風險，入市請謹慎。
@@ -1032,15 +1038,12 @@
   function openTickerModal(target) {
     currentEditTarget = target;
     const meta = window.AUTO_DATA?.tickers_meta?.[target] || {};
-    const cookieKey  = target === 'tw' ? 'tw_ticker' : 'us_ticker';
-    const cookieKey2 = target === 'tw' ? 'tw_name'   : 'us_name';
-    const curTicker = getCookie(cookieKey) || meta.ticker || (target === 'tw' ? '2330.TW' : 'NVDA');
-    const curName   = getCookie(cookieKey2) || meta.name   || (target === 'tw' ? '台積電' : 'NVIDIA');
+    const curTicker = meta.ticker || (target === 'tw' ? '2330.TW' : 'NVDA');
+    const curName   = meta.name   || (target === 'tw' ? '台積電' : 'NVIDIA');
 
-    $('#ticker-modal-title').textContent = target === 'tw' ? '設定台股自選' : '設定美股自選';
-    $('#ticker-input').value = curTicker;
-    $('#name-input').value   = curName;
-    $('#ticker-msg').classList.add('hidden');
+    $('#ticker-modal-title').textContent = target === 'tw' ? '當前台股自選' : '當前美股自選';
+    const tEl = $('#ticker-current'); if (tEl) tEl.textContent = curTicker;
+    const nEl = $('#name-current');   if (nEl) nEl.textContent = curName;
     const modal = $('#ticker-modal');
     modal.classList.remove('hidden');
     modal.classList.add('flex');
@@ -1053,34 +1056,7 @@
     currentEditTarget = null;
   }
 
-  function saveTicker() {
-    const ticker = $('#ticker-input').value.trim().toUpperCase();
-    const name   = $('#name-input').value.trim();
-    if (!ticker || ticker.length < 1 || ticker.length > 15) {
-      const msg = $('#ticker-msg');
-      msg.textContent = '⚠️ 請輸入有效 ticker（1–15 字元）';
-      msg.classList.remove('hidden');
-      return;
-    }
-    if (!currentEditTarget) return;
-    const tk = currentEditTarget === 'tw' ? 'tw_ticker' : 'us_ticker';
-    const nk = currentEditTarget === 'tw' ? 'tw_name'   : 'us_name';
-    setCookie(tk, ticker);
-    setCookie(nk, name || ticker);
-
-    // URL hash 同步
-    const params = new URLSearchParams(location.hash.slice(1) || '');
-    params.set(currentEditTarget, ticker);
-    history.replaceState(null, '', '#' + params.toString());
-
-    // 更新顯示提示
-    const msg = $('#ticker-msg');
-    msg.textContent = `✓ 已存：${ticker}。下次 workflow 跑時（每 15 分）會自動更新訊號。`;
-    msg.classList.remove('hidden');
-    msg.style.color = 'var(--buy-deep)';
-
-    setTimeout(() => closeTickerModal(), 1800);
-  }
+  function saveTicker() { /* 教學模式: 改 ticker 須在 GitHub yml */ }
 
   function bindUI() {
     // 卡片點擊 → detail modal
@@ -1108,10 +1084,7 @@
     $('#ticker-modal')?.addEventListener('click', (e) => {
       if (e.target === $('#ticker-modal')) closeTickerModal();
     });
-    $('#ticker-save')?.addEventListener('click', saveTicker);
-    $('#ticker-input')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') saveTicker();
-    });
+    /* ticker-save / ticker-input 已移除（教學模式） */
   }
 
   function renderStatus(d) {
