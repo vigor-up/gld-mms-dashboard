@@ -27,13 +27,21 @@ US_TICKER = os.environ.get('US_TICKER', 'NVDA')
 def get_asset_data(ticker):
     try:
         df = yf.Ticker(ticker).history(period='5d')
+        if df is None or df.empty:
+            return None
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = [str(c[0]) for c in df.columns]
+        if 'Close' not in df.columns:
+            return None
+        df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
+        df = df.dropna(subset=['Close'])
         if df.empty:
             return None
         close = float(df['Close'].iloc[-1])
         prev  = float(df['Close'].iloc[-2]) if len(df) > 1 else close
-        change = round((close - prev) / prev * 100, 2)
+        change = round((close - prev) / prev * 100, 2) if prev else 0.0
         return {'price': round(close, 2), 'change': change, 'score': None, 'factors': {}}
-    except:
+    except Exception:
         return None
 
 # ── COT ─────────────────────────────────────────────────────
@@ -162,18 +170,27 @@ class GldMmsUpdaterV6:
         self.s3_client = boto3.client('s3',    **boto_kwargs)
 
     def _clean(self, df):
+        """強化版：解 yfinance 0.2.5x+ MultiIndex + object dtype 問題"""
+        if df is None or df.empty:
+            return df
         df = df.copy()
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = [str(c[0]).lower() for c in df.columns]
         else:
             df.columns = [str(c).lower() for c in df.columns]
+        for col in list(df.columns):
+            if col in ('date', 'datetime', 'index', 'date_full'):
+                continue
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+        if 'close' not in df.columns:
+            return df.iloc[0:0]
+        df = df.dropna(subset=['close'])
         for col in ['open', 'high', 'low', 'close', 'volume', 'adj close']:
             if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        for col in df.columns:
-            if df[col].dtype == 'object':
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-        df.dropna(subset=['close'], inplace=True)
+                try:
+                    df[col] = df[col].astype('float64')
+                except Exception:
+                    pass
         return df
 
     def invoke_lambda(self):
@@ -274,34 +291,50 @@ class GldMmsUpdaterV6:
     def _fetch(self, ticker, name, period='60d', interval='1h'):
         print(f"[INFO] 獲取 {name} ({ticker}) [{interval}]...")
         try:
-            df = yf.download(ticker, period=period, interval=interval,
-                              progress=False, auto_adjust=True)
+            try:
+                df = yf.download(ticker, period=period, interval=interval,
+                                 progress=False, auto_adjust=True,
+                                 multi_level_index=False)
+            except TypeError:
+                df = yf.download(ticker, period=period, interval=interval,
+                                 progress=False, auto_adjust=True)
             df = self._clean(df)
-            if df.empty: return False
+            if df is None or df.empty:
+                print(f"[WARN] {ticker}: empty after clean")
+                return False
             df.reset_index(inplace=True)
-            tc = 'datetime' if 'datetime' in df.columns else df.columns[0]
-            df['date_full'] = pd.to_datetime(df[tc]).dt.strftime('%Y-%m-%d %H:%M')
+            tc = 'datetime' if 'datetime' in df.columns else ('date' if 'date' in df.columns else df.columns[0])
+            df['date_full'] = pd.to_datetime(df[tc], errors='coerce').dt.strftime('%Y-%m-%d %H:%M')
             df = self._calc_indicators(df)
             self.assets[ticker] = df.tail(100).to_dict('records')
             return True
         except Exception as e:
-            print(f"[ERROR] {ticker}: {e}"); return False
+            print(f"[ERROR] {ticker}: {e}")
+            return False
 
     def _fetch_daily(self, ticker, name, period='90d'):
         print(f"[INFO] 獲取日線 {name} ({ticker})...")
         try:
-            df = yf.download(ticker, period=period, interval='1d',
-                              progress=False, auto_adjust=True)
+            try:
+                df = yf.download(ticker, period=period, interval='1d',
+                                 progress=False, auto_adjust=True,
+                                 multi_level_index=False)
+            except TypeError:
+                df = yf.download(ticker, period=period, interval='1d',
+                                 progress=False, auto_adjust=True)
             df = self._clean(df)
-            if df.empty: return False
+            if df is None or df.empty:
+                print(f"[WARN] 日線 {ticker}: empty")
+                return False
             df.reset_index(inplace=True)
-            tc = 'datetime' if 'datetime' in df.columns else df.columns[0]
-            df['date_full'] = pd.to_datetime(df[tc]).dt.strftime('%Y-%m-%d')
+            tc = 'datetime' if 'datetime' in df.columns else ('date' if 'date' in df.columns else df.columns[0])
+            df['date_full'] = pd.to_datetime(df[tc], errors='coerce').dt.strftime('%Y-%m-%d')
             df = self._calc_indicators(df)
             self.daily[ticker] = df.tail(30).to_dict('records')
             return True
         except Exception as e:
-            print(f"[WARN] 日線 {ticker}: {e}"); return False
+            print(f"[WARN] 日線 {ticker}: {e}")
+            return False
 
     def _fetch_cross_asset(self):
         tickers = {
@@ -311,18 +344,25 @@ class GldMmsUpdaterV6:
         }
         for sym, name in tickers.items():
             try:
-                df = yf.download(sym, period='30d', interval='1d',
-                                 progress=False, auto_adjust=True)
+                try:
+                    df = yf.download(sym, period='30d', interval='1d',
+                                     progress=False, auto_adjust=True,
+                                     multi_level_index=False)
+                except TypeError:
+                    df = yf.download(sym, period='30d', interval='1d',
+                                     progress=False, auto_adjust=True)
                 df = self._clean(df)
-                if not df.empty:
+                if df is not None and not df.empty:
                     df['rsi'] = self._rsi_fast(df['close'], 14)
                     latest = df.iloc[-1]
+                    rsi_val = float(latest['rsi']) if pd.notna(latest.get('rsi', None)) else 50.0
+                    close_val = float(latest['close'])
                     self.macro[name] = {
-                        'close': float(latest['close']),
-                        'rsi':   float(latest.get('rsi', 50)),
-                        'note':  f"{name}: {latest['close']:.2f} (RSI {latest.get('rsi',50):.0f})"
+                        'close': close_val,
+                        'rsi':   rsi_val,
+                        'note':  f"{name}: {close_val:.2f} (RSI {rsi_val:.0f})"
                     }
-                    print(f"[INFO] {name}: {latest['close']:.2f}")
+                    print(f"[INFO] {name}: {close_val:.2f}")
             except Exception as e:
                 print(f"[WARN] {name}: {e}")
 
