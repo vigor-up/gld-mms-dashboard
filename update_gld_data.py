@@ -178,7 +178,8 @@ def _td_fetch(ticker, td_key):
         return None, None, None
 
 def get_asset_data(ticker, td_key=None):
-    _, latest, prev = _td_fetch(ticker, td_key)
+    closes, latest, prev = _td_fetch(ticker, td_key)
+    print(f"[INFO] get_asset_data {ticker}: TD={latest is not None}, key={bool(td_key)}")
     if latest is not None:
         change = round((latest - prev) / prev * 100, 2) if prev else 0.0
         return {'price': round(latest, 2), 'change': change, 'score': None, 'factors': {}}
