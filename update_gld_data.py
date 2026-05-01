@@ -958,278 +958,284 @@ class GldMmsUpdaterV6:
         PUSH = 80
         signals = {}
 
-        lb_score = self.lb_result.get('score', None)
-        lb_signal = self.lb_result.get('signal', '')
-        smart_money = self.lb_result.get('smart_money', {})
-        perf = self.lb_result.get('performance', {})
+        try:   # 整個函數加上 try/except，避免因 yfinance 異常導致崩潰
+            lb_score = self.lb_result.get('score', None)
+            lb_signal = self.lb_result.get('signal', '')
+            smart_money = self.lb_result.get('smart_money', {})
+            perf = self.lb_result.get('performance', {})
 
-        cot = self.macro.get('cot_gold', {})
-        cot_bias = cot.get('score_add', 0)
-        cot_net  = cot.get('spec_net_pct', 0)
-        cot_ls   = cot.get('spec_ls_ratio', 1.0)
+            cot = self.macro.get('cot_gold', {})
+            cot_bias = cot.get('score_add', 0)
+            cot_net  = cot.get('spec_net_pct', 0)
+            cot_ls   = cot.get('spec_ls_ratio', 1.0)
 
-        if not self.assets and lb_score is not None:
-            price = self.lb_result.get('gold', {}).get('price', 0)
-            combined = round(max(0, min(100, lb_score + cot_bias)))
-            if   combined >= 80: signal = 'STRONG_BUY'
-            elif combined >= 65: signal = 'BUY'
-            elif combined >= 55: signal = 'PRE_BUY'
-            elif combined <= 20: signal = 'STRONG_SELL'
-            elif combined <= 35: signal = 'SELL'
-            else:                signal = 'NEUTRAL'
-            signals['GC=F'] = {
-                'ticker':  'GC=F',
-                'short_term': {
-                    'signal':     signal,
-                    'confidence': combined,
-                    'tech_score': lb_score,
-                    'lambda_score': lb_score,
-                    'reason':     f'Lambda AI {lb_score}% + COT{cot_bias:+.0f}（技術指標暫時不可用）',
-                    'regime':     self.regime,
-                },
-                'feature_vector': {
-                    'rsi': 50.0, 'macd_hist': 0.0, 'bb_pos': 0.5,
-                    'stoch_k': 50.0, 'adx': 0.0, 'cci': 0.0, 'williams_r': -50.0,
-                    'momentum_pct': 0.0, 'vwap_dev': 0.0,
-                    'cot_score_add': cot_bias,
-                    'cot_spec_net_pct': cot_net,
-                    'cot_spec_ls_ratio': cot_ls,
-                    'regime': self.regime, 'daily_rsi': None,
-                },
-                'radar': {
-                    'msg': '技術指標不可用（yfinance 資料格式異常）',
-                    'bull_div': False, 'bear_div': False, 'atr_low': False, 'regime': self.regime,
-                },
-                'smart_money': {
-                    **smart_money,
-                    'cot_report': cot.get('summary', '待更新'),
-                    'cot_detail': cot,
-                },
-                'performance': perf,
-                'position_sizing': {'atr_risk_pct': 2.0, 'kelly_fraction': 0.5, 'recommended_contracts': 1},
-                'breakdown':  [
-                    f'AI評分: {lb_score}% ({lb_signal or "N/A"})',
-                    f'COT大戶偏多: {cot_net}% OI (LS比 {cot_ls})',
-                    f'體制: {self.regime}（技術指標不可用）',
-                    f'Kelly倉位: 50% (1合約) | COT+{cot_bias:+.0f}',
-                ],
-                'price': float(price) if price else 0.0,
-                'close': float(price) if price else 0.0,
-                'vwap_dev': 0.0,
-            }
-            print(f'[INFO] Fallback Lambda 信號: {signal} {combined}%')
-
-        if not signals:
-            print('[INFO] 進入 Fallback 2 應急模式（yfinance 即時報價）')
-            try:
-                df_yf = yf.download('GC=F', period='5d', interval='1h', progress=False, auto_adjust=True)
-                if df_yf.empty:
-                    raise ValueError('yfinance 返回空數據')
-                close = float(df_yf['close'].iloc[-1])
-                prev_close = float(df_yf['close'].iloc[-2]) if len(df_yf) > 1 else close
-                change_pct = ((close - prev_close) / prev_close * 100) if prev_close else 0
-                if   change_pct > 0.5:  simple_signal = 'STRONG_BUY'
-                elif change_pct > 0.1:  simple_signal = 'BUY'
-                elif change_pct < -0.5: simple_signal = 'STRONG_SELL'
-                elif change_pct < -0.1: simple_signal = 'SELL'
-                else:                   simple_signal = 'NEUTRAL'
-                base_score = 50 + change_pct * 5 + cot_bias
-                combined = round(max(0, min(100, base_score)))
+            if not self.assets and lb_score is not None:
+                price = self.lb_result.get('gold', {}).get('price', 0)
+                combined = round(max(0, min(100, lb_score + cot_bias)))
+                if   combined >= 80: signal = 'STRONG_BUY'
+                elif combined >= 65: signal = 'BUY'
+                elif combined >= 55: signal = 'PRE_BUY'
+                elif combined <= 20: signal = 'STRONG_SELL'
+                elif combined <= 35: signal = 'SELL'
+                else:                signal = 'NEUTRAL'
                 signals['GC=F'] = {
                     'ticker':  'GC=F',
                     'short_term': {
-                        'signal':     simple_signal,
+                        'signal':     signal,
                         'confidence': combined,
-                        'tech_score': round(50 + change_pct * 5),
-                        'lambda_score': None,
-                        'reason':     f'yfinance 即時 {close:.1f} ({change_pct:+.2f}%) + COT{cot_bias:+.0f}（應急模式）',
-                        'regime':     'UNKNOWN',
+                        'tech_score': lb_score,
+                        'lambda_score': lb_score,
+                        'reason':     f'Lambda AI {lb_score}% + COT{cot_bias:+.0f}（技術指標暫時不可用）',
+                        'regime':     self.regime,
                     },
                     'feature_vector': {
                         'rsi': 50.0, 'macd_hist': 0.0, 'bb_pos': 0.5,
                         'stoch_k': 50.0, 'adx': 0.0, 'cci': 0.0, 'williams_r': -50.0,
-                        'momentum_pct': change_pct * 10, 'vwap_dev': 0.0,
+                        'momentum_pct': 0.0, 'vwap_dev': 0.0,
                         'cot_score_add': cot_bias,
                         'cot_spec_net_pct': cot_net,
                         'cot_spec_ls_ratio': cot_ls,
-                        'regime': 'UNKNOWN', 'daily_rsi': None,
+                        'regime': self.regime, 'daily_rsi': None,
                     },
                     'radar': {
-                        'msg': 'yfinance 即時報價應急模式',
-                        'bull_div': False, 'bear_div': False, 'atr_low': False, 'regime': 'UNKNOWN',
+                        'msg': '技術指標不可用（yfinance 資料格式異常）',
+                        'bull_div': False, 'bear_div': False, 'atr_low': False, 'regime': self.regime,
                     },
                     'smart_money': {
                         **smart_money,
-                        'cot_report': cot.get('summary', '應急'),
+                        'cot_report': cot.get('summary', '待更新'),
                         'cot_detail': cot,
                     },
                     'performance': perf,
                     'position_sizing': {'atr_risk_pct': 2.0, 'kelly_fraction': 0.5, 'recommended_contracts': 1},
                     'breakdown':  [
-                        f'即時價格: {close:.2f} ({change_pct:+.2f}%)',
+                        f'AI評分: {lb_score}% ({lb_signal or "N/A"})',
                         f'COT大戶偏多: {cot_net}% OI (LS比 {cot_ls})',
-                        '體制: UNKNOWN（應急模式）',
+                        f'體制: {self.regime}（技術指標不可用）',
                         f'Kelly倉位: 50% (1合約) | COT+{cot_bias:+.0f}',
                     ],
-                    'price': close,
-                    'close': close,
+                    'price': float(price) if price else 0.0,
+                    'close': float(price) if price else 0.0,
                     'vwap_dev': 0.0,
                 }
-                print(f'[INFO] 應急 Fallback 信號: {simple_signal} {combined}% (close={close})')
+                print(f'[INFO] Fallback Lambda 信號: {signal} {combined}%')
+
+            if not signals:
+                print('[INFO] 進入 Fallback 2 應急模式（yfinance 即時報價）')
                 try:
-                    df_ag = yf.download('SI=F', period='5d', interval='1h', progress=False, auto_adjust=True)
-                    if not df_ag.empty:
-                        close_ag = float(df_ag['close'].iloc[-1])
-                        prev_ag  = float(df_ag['close'].iloc[-2]) if len(df_ag) > 1 else close_ag
-                        chg_ag = ((close_ag - prev_ag) / prev_ag * 100) if prev_ag else 0
-                        if   chg_ag > 0.5:  sig_ag = 'STRONG_BUY'
-                        elif chg_ag > 0.1:  sig_ag = 'BUY'
-                        elif chg_ag < -0.5: sig_ag = 'STRONG_SELL'
-                        elif chg_ag < -0.1: sig_ag = 'SELL'
-                        else:               sig_ag = 'NEUTRAL'
-                        sc_ag = round(max(0, min(100, 50 + chg_ag * 5 + cot_bias)))
-                        signals['SI=F'] = {
-                            'ticker': 'SI=F',
-                            'short_term': {
-                                'signal': sig_ag, 'confidence': sc_ag,
-                                'tech_score': round(50 + chg_ag * 5), 'lambda_score': None,
-                                'reason': f'SI即時 {close_ag:.2f} ({chg_ag:+.2f}%) + COT{cot_bias:+.0f}', 'regime': 'UNKNOWN',
-                            },
-                            'feature_vector': {
-                                'rsi': 50.0, 'macd_hist': 0.0, 'bb_pos': 0.5,
-                                'stoch_k': 50.0, 'adx': 0.0, 'cci': 0.0, 'williams_r': -50.0,
-                                'momentum_pct': chg_ag * 10, 'vwap_dev': 0.0,
-                                'cot_score_add': cot_bias, 'cot_spec_net_pct': 0, 'cot_spec_ls_ratio': 1.0,
-                                'regime': 'UNKNOWN', 'daily_rsi': None,
-                            },
-                            'radar': {'msg': '白銀 yfinance 即時模式', 'bull_div': False, 'bear_div': False, 'atr_low': False, 'regime': 'UNKNOWN'},
-                            'smart_money': {**smart_money, 'cot_report': '待更新', 'cot_detail': {}},
-                            'performance': perf,
-                            'position_sizing': {'atr_risk_pct': 2.0, 'kelly_fraction': 0.5, 'recommended_contracts': 1},
-                            'breakdown':  [f'白銀即時: {close_ag:.2f} ({chg_ag:+.2f}%)', f'COT+{cot_bias:+.0f}（應急）'],
-                            'price': close_ag, 'close': close_ag, 'vwap_dev': 0.0,
-                        }
-                        print(f'[INFO] SI=F 應急信號: {sig_ag} {sc_ag}%')
-                except Exception as e2:
-                    print(f'[WARN] SI=F 抓取失敗: {e2}')
-            except Exception as e:
-                print(f'[WARN] 應急 Fallback 完全失敗: {e}')
+                    df_yf = yf.download('GC=F', period='5d', interval='1h', progress=False, auto_adjust=True)
+                    if df_yf.empty:
+                        raise ValueError('yfinance 返回空數據')
+                    close = float(df_yf['close'].iloc[-1])
+                    prev_close = float(df_yf['close'].iloc[-2]) if len(df_yf) > 1 else close
+                    change_pct = ((close - prev_close) / prev_close * 100) if prev_close else 0
+                    if   change_pct > 0.5:  simple_signal = 'STRONG_BUY'
+                    elif change_pct > 0.1:  simple_signal = 'BUY'
+                    elif change_pct < -0.5: simple_signal = 'STRONG_SELL'
+                    elif change_pct < -0.1: simple_signal = 'SELL'
+                    else:                   simple_signal = 'NEUTRAL'
+                    base_score = 50 + change_pct * 5 + cot_bias
+                    combined = round(max(0, min(100, base_score)))
+                    signals['GC=F'] = {
+                        'ticker':  'GC=F',
+                        'short_term': {
+                            'signal':     simple_signal,
+                            'confidence': combined,
+                            'tech_score': round(50 + change_pct * 5),
+                            'lambda_score': None,
+                            'reason':     f'yfinance 即時 {close:.1f} ({change_pct:+.2f}%) + COT{cot_bias:+.0f}（應急模式）',
+                            'regime':     'UNKNOWN',
+                        },
+                        'feature_vector': {
+                            'rsi': 50.0, 'macd_hist': 0.0, 'bb_pos': 0.5,
+                            'stoch_k': 50.0, 'adx': 0.0, 'cci': 0.0, 'williams_r': -50.0,
+                            'momentum_pct': change_pct * 10, 'vwap_dev': 0.0,
+                            'cot_score_add': cot_bias,
+                            'cot_spec_net_pct': cot_net,
+                            'cot_spec_ls_ratio': cot_ls,
+                            'regime': 'UNKNOWN', 'daily_rsi': None,
+                        },
+                        'radar': {
+                            'msg': 'yfinance 即時報價應急模式',
+                            'bull_div': False, 'bear_div': False, 'atr_low': False, 'regime': 'UNKNOWN',
+                        },
+                        'smart_money': {
+                            **smart_money,
+                            'cot_report': cot.get('summary', '應急'),
+                            'cot_detail': cot,
+                        },
+                        'performance': perf,
+                        'position_sizing': {'atr_risk_pct': 2.0, 'kelly_fraction': 0.5, 'recommended_contracts': 1},
+                        'breakdown':  [
+                            f'即時價格: {close:.2f} ({change_pct:+.2f}%)',
+                            f'COT大戶偏多: {cot_net}% OI (LS比 {cot_ls})',
+                            '體制: UNKNOWN（應急模式）',
+                            f'Kelly倉位: 50% (1合約) | COT+{cot_bias:+.0f}',
+                        ],
+                        'price': close,
+                        'close': close,
+                        'vwap_dev': 0.0,
+                    }
+                    print(f'[INFO] 應急 Fallback 信號: {simple_signal} {combined}% (close={close})')
+                    try:
+                        df_ag = yf.download('SI=F', period='5d', interval='1h', progress=False, auto_adjust=True)
+                        if not df_ag.empty:
+                            close_ag = float(df_ag['close'].iloc[-1])
+                            prev_ag  = float(df_ag['close'].iloc[-2]) if len(df_ag) > 1 else close_ag
+                            chg_ag = ((close_ag - prev_ag) / prev_ag * 100) if prev_ag else 0
+                            if   chg_ag > 0.5:  sig_ag = 'STRONG_BUY'
+                            elif chg_ag > 0.1:  sig_ag = 'BUY'
+                            elif chg_ag < -0.5: sig_ag = 'STRONG_SELL'
+                            elif chg_ag < -0.1: sig_ag = 'SELL'
+                            else:               sig_ag = 'NEUTRAL'
+                            sc_ag = round(max(0, min(100, 50 + chg_ag * 5 + cot_bias)))
+                            signals['SI=F'] = {
+                                'ticker': 'SI=F',
+                                'short_term': {
+                                    'signal': sig_ag, 'confidence': sc_ag,
+                                    'tech_score': round(50 + chg_ag * 5), 'lambda_score': None,
+                                    'reason': f'SI即時 {close_ag:.2f} ({chg_ag:+.2f}%) + COT{cot_bias:+.0f}', 'regime': 'UNKNOWN',
+                                },
+                                'feature_vector': {
+                                    'rsi': 50.0, 'macd_hist': 0.0, 'bb_pos': 0.5,
+                                    'stoch_k': 50.0, 'adx': 0.0, 'cci': 0.0, 'williams_r': -50.0,
+                                    'momentum_pct': chg_ag * 10, 'vwap_dev': 0.0,
+                                    'cot_score_add': cot_bias, 'cot_spec_net_pct': 0, 'cot_spec_ls_ratio': 1.0,
+                                    'regime': 'UNKNOWN', 'daily_rsi': None,
+                                },
+                                'radar': {'msg': '白銀 yfinance 即時模式', 'bull_div': False, 'bear_div': False, 'atr_low': False, 'regime': 'UNKNOWN'},
+                                'smart_money': {**smart_money, 'cot_report': '待更新', 'cot_detail': {}},
+                                'performance': perf,
+                                'position_sizing': {'atr_risk_pct': 2.0, 'kelly_fraction': 0.5, 'recommended_contracts': 1},
+                                'breakdown':  [f'白銀即時: {close_ag:.2f} ({chg_ag:+.2f}%)', f'COT+{cot_bias:+.0f}（應急）'],
+                                'price': close_ag, 'close': close_ag, 'vwap_dev': 0.0,
+                            }
+                            print(f'[INFO] SI=F 應急信號: {sig_ag} {sc_ag}%')
+                    except Exception as e2:
+                        print(f'[WARN] SI=F 抓取失敗: {e2}')
+                except Exception as e:
+                    print(f'[WARN] 應急 Fallback 完全失敗: {e}')
 
-        for ticker, raw_data in self.assets.items():
-            df    = pd.DataFrame(raw_data)
-            now   = df.iloc[-1].to_dict()
+            for ticker, raw_data in self.assets.items():
+                df    = pd.DataFrame(raw_data)
+                now   = df.iloc[-1].to_dict()
 
-            daily_row = None
-            if ticker in self.daily:
-                daily_row = pd.DataFrame(self.daily[ticker]).iloc[-1].to_dict()
+                daily_row = None
+                if ticker in self.daily:
+                    daily_row = pd.DataFrame(self.daily[ticker]).iloc[-1].to_dict()
 
-            tech = self._calc_tech_score(now, daily_row)
+                tech = self._calc_tech_score(now, daily_row)
 
-            if lb_score is None:
-                ensemble = self._pure_tech_ensemble(now, daily_row)
-                lb_score  = ensemble['score']
-                lb_signal  = ensemble['signal']
-                ensemble_note = f"【純技術 Ensemble 共識】{ensemble['confidence']}%共識"
-            else:
-                ensemble_note = ''
+                if lb_score is None:
+                    ensemble = self._pure_tech_ensemble(now, daily_row)
+                    lb_score  = ensemble['score']
+                    lb_signal  = ensemble['signal']
+                    ensemble_note = f"【純技術 Ensemble 共識】{ensemble['confidence']}%共識"
+                else:
+                    ensemble_note = ''
 
-            atr_now = now.get('atr', 0)
-            pos = self._calc_position_size(tech['score'], self.regime,
-                                            atr_now, now['close'])
+                atr_now = now.get('atr', 0)
+                pos = self._calc_position_size(tech['score'], self.regime,
+                                                atr_now, now['close'])
 
-            if lb_score is not None:
-                combined = round(max(0, min(100,
-                    lb_score * 0.55
-                    + tech['score'] * 0.35
-                    + cot_bias * 1.0)))
-                note = (f"LambdaAI {lb_score}%×55%"
-                        f" + 技術{tech['score']}%×35%"
-                        f" + COT{cot_bias:+.0f}×10%")
-            else:
-                combined = tech['score']
-                note = f"純技術分析 {tech['score']}%"
-                if ensemble_note:
-                    note = ensemble_note + ' | ' + note
+                if lb_score is not None:
+                    combined = round(max(0, min(100,
+                        lb_score * 0.55
+                        + tech['score'] * 0.35
+                        + cot_bias * 1.0)))
+                    note = (f"LambdaAI {lb_score}%×55%"
+                            f" + 技術{tech['score']}%×35%"
+                            f" + COT{cot_bias:+.0f}×10%")
+                else:
+                    combined = tech['score']
+                    note = f"純技術分析 {tech['score']}%"
+                    if ensemble_note:
+                        note = ensemble_note + ' | ' + note
 
-            if   combined >= 80: signal = 'STRONG_BUY'
-            elif combined >= 65: signal = 'BUY'
-            elif combined >= 55: signal = 'PRE_BUY'
-            elif combined <= 20: signal = 'STRONG_SELL'
-            elif combined <= 35: signal = 'SELL'
-            elif combined <= 45: signal = 'PRE_SELL'
-            else:                signal = 'HOLD'
+                if   combined >= 80: signal = 'STRONG_BUY'
+                elif combined >= 65: signal = 'BUY'
+                elif combined >= 55: signal = 'PRE_BUY'
+                elif combined <= 20: signal = 'STRONG_SELL'
+                elif combined <= 35: signal = 'SELL'
+                elif combined <= 45: signal = 'PRE_SELL'
+                else:                signal = 'HOLD'
 
-            breakdown = [
-                f"AI評分: {lb_score or '?'}% ({lb_signal or 'N/A'})",
-                f"技術分: {tech['score']} {' '.join(tech['detail'][:3])}",
-                f"COT大戶: {cot_net}% OI (LS比 {cot_ls})",
-                f"體制: {self.regime} | ATR風險: {pos['atr_risk_pct']}%",
-                f"Kelly倉位: {pos['kelly_fraction']*100:.0f}% ({pos['recommended_contracts']}合約)",
-            ]
-            if ensemble_note: breakdown.insert(0, ensemble_note)
+                breakdown = [
+                    f"AI評分: {lb_score or '?'}% ({lb_signal or 'N/A'})",
+                    f"技術分: {tech['score']} {' '.join(tech['detail'][:3])}",
+                    f"COT大戶: {cot_net}% OI (LS比 {cot_ls})",
+                    f"體制: {self.regime} | ATR風險: {pos['atr_risk_pct']}%",
+                    f"Kelly倉位: {pos['kelly_fraction']*100:.0f}% ({pos['recommended_contracts']}合約)",
+                ]
+                if ensemble_note: breakdown.insert(0, ensemble_note)
 
-            radar_msgs = []
-            if now.get('bull_div'):  radar_msgs.append("底背離")
-            if now.get('bear_div'):  radar_msgs.append("頂背離")
-            if now.get('atr_low'):   radar_msgs.append("ATR擠壓")
-            if now.get('rsi', 50) < 35: radar_msgs.append("RSI超賣")
-            if now.get('rsi', 50) > 65: radar_msgs.append("RSI超買")
-            if self.regime == 'VOLATILE': radar_msgs.append("⚠️高波動")
-            if self.regime == 'TRENDING': radar_msgs.append("→趨勢")
+                radar_msgs = []
+                if now.get('bull_div'):  radar_msgs.append("底背離")
+                if now.get('bear_div'):  radar_msgs.append("頂背離")
+                if now.get('atr_low'):   radar_msgs.append("ATR擠壓")
+                if now.get('rsi', 50) < 35: radar_msgs.append("RSI超賣")
+                if now.get('rsi', 50) > 65: radar_msgs.append("RSI超買")
+                if self.regime == 'VOLATILE': radar_msgs.append("⚠️高波動")
+                if self.regime == 'TRENDING': radar_msgs.append("→趨勢")
 
-            if ticker == 'GC=F' and combined > PUSH:
-                price = float(now['close'])
-                etf   = smart_money.get('etf_flow', '?')
-                cot_r = cot.get('summary', '?')
-                # 改用 state-diff 推播（Bark 只在狀態改變時響）
-                _sp_tier = _signal_tier(float(self.lb_result.get('prob_up', 0)),
-                                        float(self.lb_result.get('prob_dn', 0)))
-                _sp_last = (_load_s3_json(None, '', _S3_STATE_KEY) or {}).get('tier', 'UNKNOWN') \
-                           if False else 'SKIP'  # 此處由 update_html 統一處理，跳過
+                if ticker == 'GC=F' and combined > PUSH:
+                    price = float(now['close'])
+                    etf   = smart_money.get('etf_flow', '?')
+                    cot_r = cot.get('summary', '?')
+                    # 改用 state-diff 推播（Bark 只在狀態改變時響）
+                    _sp_tier = _signal_tier(float(self.lb_result.get('prob_up', 0)),
+                                            float(self.lb_result.get('prob_dn', 0)))
+                    _sp_last = (_load_s3_json(None, '', _S3_STATE_KEY) or {}).get('tier', 'UNKNOWN') \
+                               if False else 'SKIP'  # 此處由 update_html 統一處理，跳過
 
-            signals[ticker] = {
-                'short_term': {
-                    'signal':     signal,
-                    'confidence': combined,
-                    'tech_score': tech['score'],
-                    'lambda_score': lb_score,
-                    'reason':     note,
-                    'regime':     self.regime,
-                },
-                'feature_vector': {
-                    'rsi':            round(now.get('rsi', 0), 1),
-                    'macd_hist':      round(now.get('macd_hist', 0), 2),
-                    'bb_pos':         round(now.get('bb_pos', 0.5), 3),
-                    'stoch_k':        round(now.get('stoch_k', 50), 1),
-                    'adx':            round(now.get('adx', 0), 1),
-                    'cci':            round(now.get('cci', 0), 1),
-                    'williams_r':     round(now.get('williams_r', -50), 1),
-                    'momentum_pct':   round(now.get('momentum', 0) * 100, 2),
-                    'vwap_dev':       round(now.get('vwap_dev', 0), 2),
-                    'cot_score_add':  cot_bias,
-                    'cot_spec_net_pct': cot_net,
-                    'cot_spec_ls_ratio': cot_ls,
-                    'regime':         self.regime,
-                    'daily_rsi':      round(daily_row.get('rsi', 50), 1) if daily_row else None,
-                },
-                'radar': {
-                    'msg':    ' | '.join(radar_msgs) if radar_msgs else '掃描正常',
-                    'bull_div': bool(now.get('bull_div')),
-                    'bear_div': bool(now.get('bear_div')),
-                    'atr_low':   bool(now.get('atr_low')),
-                    'regime':    self.regime,
-                },
-                'smart_money': {
-                    **smart_money,
-                    'cot_report':  cot.get('summary', '待更新'),
-                    'cot_detail':  cot,
-                },
-                'performance': perf,
-                'position_sizing': pos,
-                'breakdown':  breakdown,
-                'price':      float(round(now['close'], 2)),
-                'vwap_dev':   float(round(now.get('vwap_dev', 0), 2)),
-            }
+                signals[ticker] = {
+                    'short_term': {
+                        'signal':     signal,
+                        'confidence': combined,
+                        'tech_score': tech['score'],
+                        'lambda_score': lb_score,
+                        'reason':     note,
+                        'regime':     self.regime,
+                    },
+                    'feature_vector': {
+                        'rsi':            round(now.get('rsi', 0), 1),
+                        'macd_hist':      round(now.get('macd_hist', 0), 2),
+                        'bb_pos':         round(now.get('bb_pos', 0.5), 3),
+                        'stoch_k':        round(now.get('stoch_k', 50), 1),
+                        'adx':            round(now.get('adx', 0), 1),
+                        'cci':            round(now.get('cci', 0), 1),
+                        'williams_r':     round(now.get('williams_r', -50), 1),
+                        'momentum_pct':   round(now.get('momentum', 0) * 100, 2),
+                        'vwap_dev':       round(now.get('vwap_dev', 0), 2),
+                        'cot_score_add':  cot_bias,
+                        'cot_spec_net_pct': cot_net,
+                        'cot_spec_ls_ratio': cot_ls,
+                        'regime':         self.regime,
+                        'daily_rsi':      round(daily_row.get('rsi', 50), 1) if daily_row else None,
+                    },
+                    'radar': {
+                        'msg':    ' | '.join(radar_msgs) if radar_msgs else '掃描正常',
+                        'bull_div': bool(now.get('bull_div')),
+                        'bear_div': bool(now.get('bear_div')),
+                        'atr_low':   bool(now.get('atr_low')),
+                        'regime':    self.regime,
+                    },
+                    'smart_money': {
+                        **smart_money,
+                        'cot_report':  cot.get('summary', '待更新'),
+                        'cot_detail':  cot,
+                    },
+                    'performance': perf,
+                    'position_sizing': pos,
+                    'breakdown':  breakdown,
+                    'price':      float(round(now['close'], 2)),
+                    'vwap_dev':   float(round(now.get('vwap_dev', 0), 2)),
+                }
+        except Exception as calc_err:
+            print(f"[ERROR] calculate_signals 發生例外: {calc_err}")
+            import traceback
+            traceback.print_exc()
+            signals = {}
 
         return signals
 
@@ -1254,6 +1260,19 @@ class GldMmsUpdaterV6:
         prob_up = self.lb_result.get('prob_up')
         prob_dn = self.lb_result.get('prob_dn')
 
+        # 準備黃金歷史價格（供自選股相關性計算）
+        gold_history = []
+        _td_key = os.environ.get('TWELVE_DATA_KEY', '')
+        try:
+            _gc_closes, _, _ = _td_fetch('GC=F', _td_key)
+            if _gc_closes:
+                gold_history = [round(x, 2) for x in _gc_closes[-30:]]
+            if not gold_history and 'GC=F' in self.daily and self.daily['GC=F']:
+                gold_history = [float(r.get('close', 0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
+        except Exception as e:
+            print(f"[WARN] 黃金歷史走勢抓取失敗: {e}")
+
+        # 核心修正：將整個 data 建構包在 try/except 中
         try:
             data = {
                 'timestamp':    datetime.utcnow().isoformat() + 'Z',
@@ -1278,7 +1297,7 @@ class GldMmsUpdaterV6:
                 'daily':        self.daily,
                 'macro':        self.macro,
                 'signals':      self.calculate_signals() or self._lambda_fallback_signal(),
-                'win_rate_20':  _live_win_rate,
+                'win_rate_20':  win_rate,
                 'backtest':     bt_metrics,
                 'lambda': {
                     'score':      self.lb_result.get('score'),
@@ -1292,17 +1311,38 @@ class GldMmsUpdaterV6:
                     'breakdown':  breakdown,
                 },
             }
-        except Exception as _data_err:
-            print(f"[ERROR] data dict 建構失敗: {_data_err}")
-            import traceback; traceback.print_exc()
-            raise
+        except Exception as data_err:
+            print(f"[ERROR] data dict 建構失敗: {data_err}")
+            import traceback
+            traceback.print_exc()
+            # 建立最小可用的 data 物件，避免 HTML 內 window.AUTO_DATA 為空或舊值
+            data = {
+                'timestamp':    datetime.utcnow().isoformat() + 'Z',
+                'version':      'v6.0 (錯誤復原模式)',
+                'regime':       self.regime,
+                'error':        str(data_err),
+                'assets':       {},
+                'gold_history': gold_history,
+                'tickers_meta': {
+                    'tw': {'ticker': TW_TICKER, 'name': TW_NAME},
+                    'us': {'ticker': US_TICKER, 'name': US_NAME},
+                },
+                'daily':        self.daily,
+                'macro':        self.macro,
+                'signals':      {'GC=F': {'short_term': {'signal': 'NEUTRAL', 'confidence': 0, 'reason': f'資料錯誤: {data_err}'}}}
+                if self.lb_result else {},
+                'win_rate_20':  None,
+                'backtest':     {},
+                'lambda':       {'score': None, 'signal': 'ERROR', 'status': '資料建構失敗'},
+            }
 
+        # 讀取 HTML 並寫入資料
         with open(html_file, 'r', encoding='utf-8') as f:
             content = f.read()
         sm = '<script id="data-source">'
         em = '</script>'
         si = content.find(sm)
-        ei = content.find(em, si)
+        ei = content.find(em, si) if si != -1 else -1
         if si != -1 and ei != -1:
             dj = json.dumps(data, cls=NumpyEncoder)
             new_c = (
