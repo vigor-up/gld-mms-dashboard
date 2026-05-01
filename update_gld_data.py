@@ -1223,15 +1223,9 @@ class GldMmsUpdaterV6:
             'version':      'v6.0 Top-10%-Model',
             'regime':       self.regime,
             'assets': {
-                'silver': self._calc_simple_signal_for_ticker('SI=F',    '白銀',  gold_history)
-                          or get_asset_data('SI=F')
-                          or {'ticker': 'SI=F',    'name': '白銀', 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
-                'tw':     self._calc_simple_signal_for_ticker(TW_TICKER, TW_NAME, gold_history)
-                          or get_asset_data(TW_TICKER)
-                          or {'ticker': TW_TICKER, 'name': TW_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
-                'us':     self._calc_simple_signal_for_ticker(US_TICKER, US_NAME, gold_history)
-                          or get_asset_data(US_TICKER)
-                          or {'ticker': US_TICKER, 'name': US_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
+                'silver': self._calc_simple_signal_for_ticker('SI=F',    '白銀',  gold_history) or get_asset_data('SI=F') or {'ticker':'SI=F','name':'白銀','price':None,'change':None,'signal':'WAIT','confidence':50},
+                'tw':     self._calc_simple_signal_for_ticker(TW_TICKER, TW_NAME, gold_history) or get_asset_data(TW_TICKER) or {'ticker':TW_TICKER,'name':TW_NAME,'price':None,'change':None,'signal':'WAIT','confidence':50},
+                'us':     self._calc_simple_signal_for_ticker(US_TICKER, US_NAME, gold_history) or get_asset_data(US_TICKER) or {'ticker':US_TICKER,'name':US_NAME,'price':None,'change':None,'signal':'WAIT','confidence':50},
             },
             'gold_history': gold_history,
             'tickers_meta': {
