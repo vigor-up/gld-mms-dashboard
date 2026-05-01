@@ -56,13 +56,35 @@ jobs:
             --aws-access-key "${AWS_ACCESS_KEY_ID:-}" \
             --aws-secret-key "${AWS_SECRET_ACCESS_KEY:-}" || true
 
-      - name: Commit & push if changed
+      - name: Commit & push (force)
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name  "actions-user"
           git add docs/index.html
+          # 強制 commit：timestamp 每次都不同，確保 HTML 一定被更新
+          git diff --staged --quiet && git checkout docs/index.html || true
+          git add docs/index.html
           if git diff --staged --quiet; then
-            echo "沒有數據變更，跳過 commit"
+            echo "[WARN] HTML 無變化，強制觸碰 timestamp"
+            python3 -c "
+import json, re
+with open('docs/index.html', 'r') as f:
+    html = f.read()
+from datetime import datetime, timezone
+ts = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%f') + 'Z'
+# 只更新 timestamp 欄位
+html2 = re.sub(r'\"timestamp\":\s*\"[^\"]+\"', f'\"timestamp\": \"{ts}\"', html, count=1)
+if html2 != html:
+    with open('docs/index.html', 'w') as f:
+        f.write(html2)
+    print(f'[INFO] 強制更新 timestamp: {ts}')
+else:
+    print('[WARN] AUTO_DATA 可能未注入，跳過')
+"
+            git add docs/index.html
+          fi
+          if git diff --staged --quiet; then
+            echo "沒有任何變更，跳過 commit"
           else
             git commit -m "v6.0 Lambda XGBoost 更新: $(TZ='Asia/Taipei' date '+%Y-%m-%d %H:%M:%S') 台北"
             git push origin main
