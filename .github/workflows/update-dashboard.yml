@@ -44,6 +44,8 @@ jobs:
           BARK_KEY_3: ${{ secrets.BARK_KEY_3 }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        # yfinance 有時被 Yahoo Finance 封鎖（JSONDecodeError）
+        # || true 確保即使 yfinance 全失敗，Lambda fallback 資料仍能寫入 HTML
         run: |
           python update_gld_data.py \
             --html docs/index.html \
@@ -52,7 +54,7 @@ jobs:
             --bark-key-2 "${BARK_KEY_2:-}" \
             --bark-key-3 "${BARK_KEY_3:-}" \
             --aws-access-key "${AWS_ACCESS_KEY_ID:-}" \
-            --aws-secret-key "${AWS_SECRET_ACCESS_KEY:-}"
+            --aws-secret-key "${AWS_SECRET_ACCESS_KEY:-}" || true
 
       - name: Commit & push if changed
         run: |
