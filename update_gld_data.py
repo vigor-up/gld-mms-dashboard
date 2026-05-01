@@ -794,56 +794,6 @@ class GldMmsUpdaterV6:
         if lb_score is None:
             return {}
 
-        # 為自選股相關性計算準備 GLD 30 日 close 序列
-        gold_history = []
-        try:
-            if 'GC=F' in self.daily and self.daily['GC=F']:
-                gold_history = [float(r.get('close', 0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
-            if not gold_history:
-                # fallback: 直接抓 GLD ETF 90 日 close
-                _gh = yf.Ticker('GLD').history(period='90d', interval='1d')
-                if _gh is not None and not _gh.empty:
-                    if isinstance(_gh.columns, pd.MultiIndex):
-                        _gh.columns = [str(c[0]) for c in _gh.columns]
-                    if 'Close' in _gh.columns:
-                        _gh['Close'] = pd.to_numeric(_gh['Close'], errors='coerce')
-                        _gh = _gh.dropna(subset=['Close'])
-                        gold_history = [round(float(x), 2) for x in _gh['Close'].tail(30).tolist()]
-        except Exception as e:
-            print(f"[WARN] 黃金歷史走勢抓取失敗: {e}")
-
-        # ── 實戰紀錄 + Bark state-diff 推播 ────────────────────────
-        _live_win_rate, _live_samples = None, 0
-        _push_s3 = None
-        try:
-            _aws_key    = os.environ.get('AWS_ACCESS_KEY_ID', '')
-            _aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-            _bucket     = 'gld-mms-data-richtrong'
-            if _aws_key and _aws_secret:
-                _push_s3 = boto3.client('s3', region_name='ap-northeast-1',
-                                        aws_access_key_id=_aws_key,
-                                        aws_secret_access_key=_aws_secret)
-                # 取當前黃金收盤價
-                _gp = 0.0
-                for _sd in self.signals.values():
-                    _p = (_sd or {}).get('short_term', {}).get('price') or                          (_sd or {}).get('feature_vector', {}).get('close')
-                    if _p:
-                        _gp = float(_p)
-                        break
-                if not _gp and self.daily.get('GC=F'):
-                    _gp = float(self.daily['GC=F'][-1].get('close', 0))
-                # 更新實戰紀錄
-                _live_win_rate, _live_samples = _update_signal_history(
-                    _push_s3, _bucket,
-                    signal  = str(lb.get('signal', '')),
-                    prob_up = float(lb.get('prob_up', 50)),
-                    prob_dn = float(lb.get('prob_dn', 50)),
-                    score   = int(lb.get('score', 0)),
-                    price   = _gp,
-                )
-        except Exception as _he:
-            print(f"[WARN] 實戰紀錄失敗: {_he}")
-        # ────────────────────────────────────────────────────────────
         cot = self.macro.get('cot_gold', {})
         cot_bias = cot.get('score_add', 0)
         combined = round(max(0, min(100, lb_score + cot_bias)))
@@ -1188,6 +1138,56 @@ class GldMmsUpdaterV6:
         win_rate   = calc_win_rate_20(history, 20)
         bt_metrics = calc_backtest_metrics(history, 100)
 
+        # 為自選股相關性計算準備 GLD 30 日 close 序列
+        gold_history = []
+        try:
+            if 'GC=F' in self.daily and self.daily['GC=F']:
+                gold_history = [float(r.get('close', 0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
+            if not gold_history:
+                # fallback: 直接抓 GLD ETF 90 日 close
+                _gh = yf.Ticker('GLD').history(period='90d', interval='1d')
+                if _gh is not None and not _gh.empty:
+                    if isinstance(_gh.columns, pd.MultiIndex):
+                        _gh.columns = [str(c[0]) for c in _gh.columns]
+                    if 'Close' in _gh.columns:
+                        _gh['Close'] = pd.to_numeric(_gh['Close'], errors='coerce')
+                        _gh = _gh.dropna(subset=['Close'])
+                        gold_history = [round(float(x), 2) for x in _gh['Close'].tail(30).tolist()]
+        except Exception as e:
+            print(f"[WARN] 黃金歷史走勢抓取失敗: {e}")
+
+        # ── 實戰紀錄 + Bark state-diff 推播 ────────────────────────
+        _live_win_rate, _live_samples = None, 0
+        _push_s3 = None
+        try:
+            _aws_key    = os.environ.get('AWS_ACCESS_KEY_ID', '')
+            _aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+            _bucket     = 'gld-mms-data-richtrong'
+            if _aws_key and _aws_secret:
+                _push_s3 = boto3.client('s3', region_name='ap-northeast-1',
+                                        aws_access_key_id=_aws_key,
+                                        aws_secret_access_key=_aws_secret)
+                # 取當前黃金收盤價
+                _gp = 0.0
+                for _sd in self.signals.values():
+                    _p = (_sd or {}).get('short_term', {}).get('price') or                          (_sd or {}).get('feature_vector', {}).get('close')
+                    if _p:
+                        _gp = float(_p)
+                        break
+                if not _gp and self.daily.get('GC=F'):
+                    _gp = float(self.daily['GC=F'][-1].get('close', 0))
+                # 更新實戰紀錄
+                _live_win_rate, _live_samples = _update_signal_history(
+                    _push_s3, _bucket,
+                    signal  = str(lb.get('signal', '')),
+                    prob_up = float(lb.get('prob_up', 50)),
+                    prob_dn = float(lb.get('prob_dn', 50)),
+                    score   = int(lb.get('score', 0)),
+                    price   = _gp,
+                )
+        except Exception as _he:
+            print(f"[WARN] 實戰紀錄失敗: {_he}")
+        # ────────────────────────────────────────────────────────────
         cot = self.macro.get('cot_gold', {})
         breakdown = [
             f"COT大戶偏多: {cot.get('spec_net_pct', 0)}% OI",
