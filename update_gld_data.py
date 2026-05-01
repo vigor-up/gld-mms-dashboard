@@ -154,7 +154,6 @@ def _td_symbol(ticker):
     return (ticker, None)
 
 def _td_fetch(ticker, td_key):
-    print(f"[INFO] TD key={bool(td_key)} len={len(td_key) if td_key else 0} ticker={ticker}")
     if not td_key:
         return None, None, None
     symbol, exchange = _td_symbol(ticker)
@@ -178,8 +177,7 @@ def _td_fetch(ticker, td_key):
         return None, None, None
 
 def get_asset_data(ticker, td_key=None):
-    closes, latest, prev = _td_fetch(ticker, td_key)
-    print(f"[INFO] get_asset_data {ticker}: TD={latest is not None}, key={bool(td_key)}")
+    _, latest, prev = _td_fetch(ticker, td_key)
     if latest is not None:
         change = round((latest - prev) / prev * 100, 2) if prev else 0.0
         return {'price': round(latest, 2), 'change': change, 'score': None, 'factors': {}}
@@ -1236,7 +1234,7 @@ class GldMmsUpdaterV6:
         return signals
 
     def update_html(self, html_file: str):
-        print("[INFO] update_html started")
+        print(f"[INFO] update_html called: {html_file}")
         DATA_JSON_PATH = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), 'data.json')
         history    = _load_history(DATA_JSON_PATH)
@@ -1256,44 +1254,48 @@ class GldMmsUpdaterV6:
         prob_up = self.lb_result.get('prob_up')
         prob_dn = self.lb_result.get('prob_dn')
 
-        data = {
-            'timestamp':    datetime.utcnow().isoformat() + 'Z',
-            'version':      'v6.0 Top-10%-Model',
-            'regime':       self.regime,
-            'assets': {
-                'silver': self._calc_simple_signal_for_ticker('SI=F',    '白銀',  gold_history, _td_key)
-                          or get_asset_data('SI=F', _td_key)
-                          or {'ticker': 'SI=F',    'name': '白銀', 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
-                'tw':     self._calc_simple_signal_for_ticker(TW_TICKER, TW_NAME, gold_history, _td_key)
-                          or get_asset_data(TW_TICKER, _td_key)
-                          or {'ticker': TW_TICKER, 'name': TW_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
-                'us':     self._calc_simple_signal_for_ticker(US_TICKER, US_NAME, gold_history, _td_key)
-                          or get_asset_data(US_TICKER, _td_key)
-                          or {'ticker': US_TICKER, 'name': US_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
-            },
-            'gold_history': gold_history,
-            '_debug': {'td_key_set': bool(os.environ.get('TWELVE_DATA_KEY')), 'td_key_len': len(os.environ.get('TWELVE_DATA_KEY',''))},
-            'tickers_meta': {
-                'tw': {'ticker': TW_TICKER, 'name': TW_NAME},
-                'us': {'ticker': US_TICKER, 'name': US_NAME},
-            },
-            'daily':        self.daily,
-            'macro':        self.macro,
-            'signals':      self.calculate_signals() or self._lambda_fallback_signal(),
-            'win_rate_20':  _live_win_rate,
-            'backtest':     bt_metrics,
-            'lambda': {
-                'score':      self.lb_result.get('score'),
-                'signal':     self.lb_result.get('signal'),
-                'status':     self.lb_result.get('status', '未連線'),
-                'smart_money':self.lb_result.get('smart_money', {}),
-                'performance':perf,
-                'model':      lb_model,
-                'prob_up':    prob_up,
-                'prob_dn':    prob_dn,
-                'breakdown':  breakdown,
-            },
-        }
+        try:
+            data = {
+                'timestamp':    datetime.utcnow().isoformat() + 'Z',
+                'version':      'v6.0 Top-10%-Model',
+                'regime':       self.regime,
+                'assets': {
+                    'silver': self._calc_simple_signal_for_ticker('SI=F',    '白銀',  gold_history, _td_key)
+                              or get_asset_data('SI=F', _td_key)
+                              or {'ticker': 'SI=F',    'name': '白銀', 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
+                    'tw':     self._calc_simple_signal_for_ticker(TW_TICKER, TW_NAME, gold_history, _td_key)
+                              or get_asset_data(TW_TICKER, _td_key)
+                              or {'ticker': TW_TICKER, 'name': TW_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
+                    'us':     self._calc_simple_signal_for_ticker(US_TICKER, US_NAME, gold_history, _td_key)
+                              or get_asset_data(US_TICKER, _td_key)
+                              or {'ticker': US_TICKER, 'name': US_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
+                },
+                'gold_history': gold_history,
+                'tickers_meta': {
+                    'tw': {'ticker': TW_TICKER, 'name': TW_NAME},
+                    'us': {'ticker': US_TICKER, 'name': US_NAME},
+                },
+                'daily':        self.daily,
+                'macro':        self.macro,
+                'signals':      self.calculate_signals() or self._lambda_fallback_signal(),
+                'win_rate_20':  _live_win_rate,
+                'backtest':     bt_metrics,
+                'lambda': {
+                    'score':      self.lb_result.get('score'),
+                    'signal':     self.lb_result.get('signal'),
+                    'status':     self.lb_result.get('status', '未連線'),
+                    'smart_money':self.lb_result.get('smart_money', {}),
+                    'performance':perf,
+                    'model':      lb_model,
+                    'prob_up':    prob_up,
+                    'prob_dn':    prob_dn,
+                    'breakdown':  breakdown,
+                },
+            }
+        except Exception as _data_err:
+            print(f"[ERROR] data dict 建構失敗: {_data_err}")
+            import traceback; traceback.print_exc()
+            raise
 
         with open(html_file, 'r', encoding='utf-8') as f:
             content = f.read()
