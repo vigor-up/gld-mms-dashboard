@@ -1272,6 +1272,7 @@ class GldMmsUpdaterV6:
                           or {'ticker': US_TICKER, 'name': US_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
             },
             'gold_history': gold_history,
+            '_debug': {'td_key_set': bool(os.environ.get('TWELVE_DATA_KEY')), 'td_key_len': len(os.environ.get('TWELVE_DATA_KEY',''))},
             'tickers_meta': {
                 'tw': {'ticker': TW_TICKER, 'name': TW_NAME},
                 'us': {'ticker': US_TICKER, 'name': US_NAME},
