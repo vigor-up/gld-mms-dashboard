@@ -154,6 +154,7 @@ def _td_symbol(ticker):
     return (ticker, None)
 
 def _td_fetch(ticker, td_key):
+    print(f"[INFO] TD key={bool(td_key)} len={len(td_key) if td_key else 0} ticker={ticker}")
     if not td_key:
         return None, None, None
     symbol, exchange = _td_symbol(ticker)
