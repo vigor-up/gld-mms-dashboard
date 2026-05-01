@@ -140,7 +140,47 @@ def _update_signal_history(s3_client, bucket, signal, prob_up, prob_dn, score, p
     return win_rate, len(recent_20)
 
 
-def get_asset_data(ticker):
+# ─── Twelve Data API（取代 yfinance，不受 IP 封鎖影響）────────────────────
+_TD_MAP = {
+    'SI=F': ('XAG/USD', None),
+    'GC=F': ('XAU/USD', None),
+    'GLD':  ('GLD',     None),
+}
+def _td_symbol(ticker):
+    if ticker in _TD_MAP:
+        return _TD_MAP[ticker]
+    if ticker.endswith('.TW'):
+        return (ticker[:-3], 'TSE')
+    return (ticker, None)
+
+def _td_fetch(ticker, td_key):
+    if not td_key:
+        return None, None, None
+    symbol, exchange = _td_symbol(ticker)
+    params = {'symbol': symbol, 'interval': '1day', 'outputsize': 32, 'apikey': td_key}
+    if exchange:
+        params['exchange'] = exchange
+    try:
+        r = requests.get('https://api.twelvedata.com/time_series', params=params, timeout=12)
+        data = r.json()
+        if data.get('status') == 'error' or 'values' not in data:
+            print(f"[WARN] Twelve Data {ticker}: {data.get('message','err')}")
+            return None, None, None
+        vals = data['values']
+        closes = [float(v['close']) for v in vals]
+        closes.reverse()
+        latest = closes[-1] if closes else None
+        prev   = closes[-2] if len(closes) > 1 else latest
+        return closes, latest, prev
+    except Exception as e:
+        print(f"[WARN] Twelve Data {ticker}: {e}")
+        return None, None, None
+
+def get_asset_data(ticker, td_key=None):
+    _, latest, prev = _td_fetch(ticker, td_key)
+    if latest is not None:
+        change = round((latest - prev) / prev * 100, 2) if prev else 0.0
+        return {'price': round(latest, 2), 'change': change, 'score': None, 'factors': {}}
     try:
         df = yf.Ticker(ticker).history(period='5d')
         if df is None or df.empty:
@@ -154,8 +194,8 @@ def get_asset_data(ticker):
         if df.empty:
             return None
         close = float(df['Close'].iloc[-1])
-        prev  = float(df['Close'].iloc[-2]) if len(df) > 1 else close
-        change = round((close - prev) / prev * 100, 2) if prev else 0.0
+        prev2 = float(df['Close'].iloc[-2]) if len(df) > 1 else close
+        change = round((close - prev2) / prev2 * 100, 2) if prev2 else 0.0
         return {'price': round(close, 2), 'change': change, 'score': None, 'factors': {}}
     except Exception:
         return None
@@ -488,14 +528,19 @@ class GldMmsUpdaterV6:
             except Exception as e:
                 print(f"[WARN] {name}: {e}")
 
-    def _calc_simple_signal_for_ticker(self, ticker, name, gld_history=None):
+    def _calc_simple_signal_for_ticker(self, ticker, name, gld_history=None, td_key=None):
         """為任意 ticker 計算簡化版訊號（給自選股用）"""
         try:
-            try:
-                hist = yf.Ticker(ticker).history(period='90d', interval='1d')
-            except Exception as e:
-                print(f"[WARN] 自選股 {ticker} 抓資料失敗: {e}")
-                return None
+            _td_closes, _, _ = _td_fetch(ticker, td_key)
+            if _td_closes and len(_td_closes) >= 20:
+                hist = pd.DataFrame({'Close': _td_closes, 'High': _td_closes, 'Low': _td_closes, 'Volume': [0]*len(_td_closes)})
+                hist.index = pd.RangeIndex(len(hist))
+            else:
+                try:
+                    hist = yf.Ticker(ticker).history(period='90d', interval='1d')
+                except Exception as e:
+                    print(f"[WARN] 自選股 {ticker} 抓資料失敗: {e}")
+                    return None
             if hist is None or hist.empty or len(hist) < 20:
                 print(f"[WARN] 自選股 {ticker} 資料不足")
                 return None
@@ -828,11 +873,14 @@ class GldMmsUpdaterV6:
 
         # 為自選股相關性計算準備 GLD 30 日 close 序列
         gold_history = []
+        _td_key = os.environ.get('TWELVE_DATA_KEY', '')
         try:
-            if 'GC=F' in self.daily and self.daily['GC=F']:
+            _gc_closes, _, _ = _td_fetch('GC=F', _td_key)
+            if _gc_closes:
+                gold_history = [round(x, 2) for x in _gc_closes[-30:]]
+            if not gold_history and 'GC=F' in self.daily and self.daily['GC=F']:
                 gold_history = [float(r.get('close', 0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
             if not gold_history:
-                # fallback: 直接抓 GLD ETF 90 日 close
                 _gh = yf.Ticker('GLD').history(period='90d', interval='1d')
                 if _gh is not None and not _gh.empty:
                     if isinstance(_gh.columns, pd.MultiIndex):
@@ -843,7 +891,6 @@ class GldMmsUpdaterV6:
                         gold_history = [round(float(x), 2) for x in _gh['Close'].tail(30).tolist()]
         except Exception as e:
             print(f"[WARN] 黃金歷史走勢抓取失敗: {e}")
-        # fallback: 若完全抓不到，至少用 Lambda price 填 1 點（讓前端知道目前價格）
         if not gold_history:
             _lp = float(self.lb_result.get('gold', {}).get('price', 0) or 0)
             if _lp > 0:
@@ -1206,26 +1253,20 @@ class GldMmsUpdaterV6:
         prob_up = self.lb_result.get('prob_up')
         prob_dn = self.lb_result.get('prob_dn')
 
-        # gold_history for assets correlation（update_html scope）
-        gold_history = []
-        try:
-            if 'GC=F' in self.daily and self.daily['GC=F']:
-                gold_history = [float(r.get('close', 0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
-            if not gold_history:
-                _lp = float(self.lb_result.get('gold', {}).get('price', 0) or 0)
-                if _lp > 0:
-                    gold_history = [_lp]
-        except Exception:
-            pass
-
         data = {
             'timestamp':    datetime.utcnow().isoformat() + 'Z',
             'version':      'v6.0 Top-10%-Model',
             'regime':       self.regime,
             'assets': {
-                'silver': self._calc_simple_signal_for_ticker('SI=F',    '白銀',  gold_history) or get_asset_data('SI=F') or {'ticker':'SI=F','name':'白銀','price':None,'change':None,'signal':'WAIT','confidence':50},
-                'tw':     self._calc_simple_signal_for_ticker(TW_TICKER, TW_NAME, gold_history) or get_asset_data(TW_TICKER) or {'ticker':TW_TICKER,'name':TW_NAME,'price':None,'change':None,'signal':'WAIT','confidence':50},
-                'us':     self._calc_simple_signal_for_ticker(US_TICKER, US_NAME, gold_history) or get_asset_data(US_TICKER) or {'ticker':US_TICKER,'name':US_NAME,'price':None,'change':None,'signal':'WAIT','confidence':50},
+                'silver': self._calc_simple_signal_for_ticker('SI=F',    '白銀',  gold_history, _td_key)
+                          or get_asset_data('SI=F', _td_key)
+                          or {'ticker': 'SI=F',    'name': '白銀', 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
+                'tw':     self._calc_simple_signal_for_ticker(TW_TICKER, TW_NAME, gold_history, _td_key)
+                          or get_asset_data(TW_TICKER, _td_key)
+                          or {'ticker': TW_TICKER, 'name': TW_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
+                'us':     self._calc_simple_signal_for_ticker(US_TICKER, US_NAME, gold_history, _td_key)
+                          or get_asset_data(US_TICKER, _td_key)
+                          or {'ticker': US_TICKER, 'name': US_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
             },
             'gold_history': gold_history,
             'tickers_meta': {
@@ -1279,9 +1320,12 @@ def main():
     p.add_argument('--bark-key-3',       default=None)
     p.add_argument('--aws-access-key',   default=None)
     p.add_argument('--aws-secret-key',   default=None)
+    p.add_argument('--twelve-data-key',   default=None)
     p.add_argument('--aws-region',      default='ap-northeast-1')
     args, _ = p.parse_known_args()
 
+    if args.twelve_data_key:
+        os.environ['TWELVE_DATA_KEY'] = args.twelve_data_key
     updater = GldMmsUpdaterV6(
         fred_key      = args.fred_key,
         bark_keys     = [args.bark_key_1, args.bark_key_2, args.bark_key_3],
