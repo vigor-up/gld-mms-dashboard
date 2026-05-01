@@ -142,9 +142,10 @@ def _update_signal_history(s3_client, bucket, signal, prob_up, prob_dn, score, p
 
 # ─── Twelve Data API（取代 yfinance，不受 IP 封鎖影響）────────────────────
 _TD_MAP = {
-    'SI=F': ('XAG/USD', None),
+    'SI=F': ('SLV',     None),    # iShares Silver Trust ETF
     'GC=F': ('XAU/USD', None),
     'GLD':  ('GLD',     None),
+    '2330.TW': ('TSM',  None),    # 台積電 NYSE ADR
 }
 def _td_symbol(ticker):
     if ticker in _TD_MAP:
