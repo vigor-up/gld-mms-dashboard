@@ -26,6 +26,120 @@ US_TICKER = os.environ.get('US_TICKER', 'NVDA')
 TW_NAME   = os.environ.get('TW_NAME',   '台積電')
 US_NAME   = os.environ.get('US_NAME',   'NVIDIA')
 
+# ─── Bark 推播：只在狀態改變時推送 ─────────────────────────────────
+_S3_STATE_KEY   = 'signal_state.json'
+_S3_HISTORY_KEY = 'signal_history.json'
+
+def _load_s3_json(s3_client, bucket, key):
+    try:
+        resp = s3_client.get_object(Bucket=bucket, Key=key)
+        return json.loads(resp['Body'].read().decode('utf-8'))
+    except Exception:
+        return None
+
+def _save_s3_json(s3_client, bucket, key, data):
+    try:
+        s3_client.put_object(
+            Bucket=bucket, Key=key,
+            Body=json.dumps(data, ensure_ascii=False).encode('utf-8'),
+            ContentType='application/json'
+        )
+    except Exception as e:
+        print(f"[WARN] S3 write {key} 失敗: {e}")
+
+def _signal_tier(prob_up, prob_dn):
+    """把連續機率映射成離散等級，避免微小波動觸發推播"""
+    if prob_up >= 90:  return 'STRONG_BUY'
+    if prob_up >= 80:  return 'BUY'
+    if prob_dn >= 90:  return 'STRONG_SELL'
+    if prob_dn >= 80:  return 'SELL'
+    return 'WAIT'
+
+def _should_push(prob_up, prob_dn, signal, s3_client=None, bucket=''):
+    """
+    回傳 (要推播, 推播原因)
+    規則：tier 改變才推，同狀態持續靜默；連續 4 小時發一次提醒
+    """
+    import time
+    last      = (_load_s3_json(s3_client, bucket, _S3_STATE_KEY) or {}) if s3_client else {}
+    now       = time.time()
+    cur_tier  = _signal_tier(prob_up, prob_dn)
+    last_tier = last.get('tier', 'UNKNOWN')
+    last_ts   = last.get('ts', 0)
+
+    reason = ''
+    buy_t, sell_t = ('BUY', 'STRONG_BUY'), ('SELL', 'STRONG_SELL')
+    if cur_tier != last_tier:
+        if   last_tier in buy_t  and cur_tier in sell_t: reason = '⚠️ 方向反轉：買進→賣出'
+        elif last_tier in sell_t and cur_tier in buy_t:  reason = '⚠️ 方向反轉：賣出→買進'
+        elif cur_tier == 'STRONG_BUY':                   reason = '🚀 信心突破90%：強力買進'
+        elif cur_tier == 'STRONG_SELL':                  reason = '🔴 信心突破90%：強力賣出'
+        elif cur_tier == 'BUY':                          reason = '📈 新買進訊號（≥80%）'
+        elif cur_tier == 'SELL':                         reason = '📉 新賣出訊號（≥80%）'
+        elif cur_tier == 'WAIT' and last_tier not in ('WAIT', 'UNKNOWN'): reason = '⏸ 訊號轉為觀望'
+    elif cur_tier not in ('WAIT', 'UNKNOWN') and (now - last_ts) > 4 * 3600:
+        reason = f'⏰ 4h摘要 | {signal}'
+
+    new_state = {'tier': cur_tier, 'ts': now if reason else last_ts}
+    if s3_client:
+        _save_s3_json(s3_client, bucket, _S3_STATE_KEY, new_state)
+    return bool(reason), reason
+
+
+# ─── 實戰紀錄（存 S3，累積後計算真實勝率）──────────────────────────
+
+def _update_signal_history(s3_client, bucket, signal, prob_up, prob_dn, score, price):
+    """
+    1. 載入歷史紀錄
+    2. 回填已到期但未 verify 的舊紀錄（用當前 price 對比）
+    3. 追加本次訊號（只記信心 ≥ 80%）
+    4. 計算近 20 次 1d 勝率回傳
+    5. 存回 S3
+    """
+    from datetime import datetime, timezone
+    history = _load_s3_json(s3_client, bucket, _S3_HISTORY_KEY) or []
+    now = datetime.now(timezone.utc)
+
+    for rec in history:
+        try:
+            rec_ts = datetime.fromisoformat(rec['ts'].replace('Z', '+00:00'))
+            age_h  = (now - rec_ts).total_seconds() / 3600
+            ep, sig = rec.get('price_at_signal', 0), rec.get('signal', '')
+            if not ep:
+                continue
+            if rec.get('result_1d') is None and 24 <= age_h < 168:
+                pct = (price - ep) / ep * 100
+                rec['result_1d'] = round(pct, 3)
+                rec['win_1d'] = ('BUY' in sig and pct > 0) or ('SELL' in sig and pct < 0)
+            if rec.get('result_5d') is None and 120 <= age_h < 360:
+                pct = (price - ep) / ep * 100
+                rec['result_5d'] = round(pct, 3)
+                rec['win_5d'] = ('BUY' in sig and pct > 0) or ('SELL' in sig and pct < 0)
+        except Exception:
+            continue
+
+    qualified = [r for r in history
+                 if r.get('result_1d') is not None
+                 and (r.get('prob_up', 0) >= 80 or r.get('prob_dn', 0) >= 80)]
+    recent_20 = qualified[-20:]
+    win_rate  = round(sum(1 for r in recent_20 if r.get('win_1d')) / len(recent_20) * 100, 1)                 if recent_20 else None
+
+    if prob_up >= 80 or prob_dn >= 80:
+        history.append({
+            'ts': now.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'signal': signal,
+            'prob_up': round(prob_up, 1), 'prob_dn': round(prob_dn, 1),
+            'score': score, 'price_at_signal': round(price, 2),
+            'result_1d': None, 'result_5d': None,
+            'win_1d': None,    'win_5d': None,
+        })
+
+    history = history[-200:]
+    _save_s3_json(s3_client, bucket, _S3_HISTORY_KEY, history)
+    print(f"[INFO] 實戰紀錄 | 總={len(history)} 已驗={len(qualified)} 近20勝率={win_rate}%")
+    return win_rate, len(recent_20)
+
+
 def get_asset_data(ticker):
     try:
         df = yf.Ticker(ticker).history(period='5d')
@@ -679,12 +793,46 @@ class GldMmsUpdaterV6:
         lb_score = self.lb_result.get('score', None)
         if lb_score is None:
             return {}
+        # ── 實戰紀錄 + Bark state-diff 推播 ────────────────────────
+        _live_win_rate, _live_samples = None, 0
+        _push_s3 = None
+        try:
+            _aws_key    = os.environ.get('AWS_ACCESS_KEY_ID', '')
+            _aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+            _bucket     = 'gld-mms-data-richtrong'
+            if _aws_key and _aws_secret:
+                _push_s3 = boto3.client('s3', region_name='ap-northeast-1',
+                                        aws_access_key_id=_aws_key,
+                                        aws_secret_access_key=_aws_secret)
+                # 取當前黃金收盤價
+                _gp = 0.0
+                for _sd in self.signals.values():
+                    _p = (_sd or {}).get('short_term', {}).get('price') or                          (_sd or {}).get('feature_vector', {}).get('close')
+                    if _p:
+                        _gp = float(_p)
+                        break
+                if not _gp and self.daily.get('GC=F'):
+                    _gp = float(self.daily['GC=F'][-1].get('close', 0))
+                # 更新實戰紀錄
+                _live_win_rate, _live_samples = _update_signal_history(
+                    _push_s3, _bucket,
+                    signal  = str(lb.get('signal', '')),
+                    prob_up = float(lb.get('prob_up', 50)),
+                    prob_dn = float(lb.get('prob_dn', 50)),
+                    score   = int(lb.get('score', 0)),
+                    price   = _gp,
+                )
+        except Exception as _he:
+            print(f"[WARN] 實戰紀錄失敗: {_he}")
+        # ────────────────────────────────────────────────────────────
+
         # 為自選股相關性計算準備 GLD 30 日 close 序列
         gold_history = []
         try:
             if 'GC=F' in self.daily and self.daily['GC=F']:
                 gold_history = [float(r.get('close', 0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
             if not gold_history:
+                # fallback: 直接抓 GLD ETF 90 日 close
                 _gh = yf.Ticker('GLD').history(period='90d', interval='1d')
                 if _gh is not None and not _gh.empty:
                     if isinstance(_gh.columns, pd.MultiIndex):
@@ -981,14 +1129,11 @@ class GldMmsUpdaterV6:
                 price = float(now['close'])
                 etf   = smart_money.get('etf_flow', '?')
                 cot_r = cot.get('summary', '?')
-                self.send_push(
-                    f"📈 黃金{'強烈' if signal=='STRONG_BUY' else ''}買進信號！"
-                    if 'BUY' in signal else
-                    f"📉 黃金{'強烈' if signal=='STRONG_SELL' else ''}賣出信號！",
-                    f"綜合評分:{combined}% | ${price:.2f} | "
-                    f"ETF:{etf} | COT:{cot_r[:20] if cot_r else '?'} | "
-                    f"體制:{self.regime}"
-                )
+                # 改用 state-diff 推播（Bark 只在狀態改變時響）
+                _sp_tier = _signal_tier(float(self.lb_result.get('prob_up', 0)),
+                                        float(self.lb_result.get('prob_dn', 0)))
+                _sp_last = (_load_s3_json(None, '', _S3_STATE_KEY) or {}).get('tier', 'UNKNOWN') \
+                           if False else 'SKIP'  # 此處由 update_html 統一處理，跳過
 
             signals[ticker] = {
                 'short_term': {
@@ -1043,23 +1188,6 @@ class GldMmsUpdaterV6:
         win_rate   = calc_win_rate_20(history, 20)
         bt_metrics = calc_backtest_metrics(history, 100)
 
-        # 照市す GLD 30日 close 序列（犼傹�update_html 方径��� 层/影齍隰' �嘞）
-        gold_history = []
-        try:
-            if 'GC=F' in self.daily and self.daily['GC=F']:
-                gold_history = [float(r.get('close', 0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
-            if not gold_history:
-                _gh = yf.Ticker('GLD').history(period='90d', interval='1d')
-                if _gh is not None and not _gh.empty:
-                    if isinstance(_gh.columns, pd.MultiIndex):
-                        _gh.columns = [str(c[0]) for c in _gh.columns]
-                    if 'Close' in _gh.columns:
-                        _gh['Close'] = pd.to_numeric(_gh['Close'], errors='coerce')
-                        _gh = _gh.dropna(subset=['Close'])
-                        gold_history = [round(float(x), 2) for x in _gh['Close'].tail(30).tolist()]
-        except Exception as e:
-            print(f"[WARN] 黃金歷史走勫抓取失敗: {e}")
-
         cot = self.macro.get('cot_gold', {})
         breakdown = [
             f"COT大戶偏多: {cot.get('spec_net_pct', 0)}% OI",
@@ -1090,7 +1218,7 @@ class GldMmsUpdaterV6:
             'daily':        self.daily,
             'macro':        self.macro,
             'signals':      self.calculate_signals() or self._lambda_fallback_signal(),
-            'win_rate_20':  win_rate,
+            'win_rate_20':  _live_win_rate,
             'backtest':     bt_metrics,
             'lambda': {
                 'score':      self.lb_result.get('score'),
@@ -1154,26 +1282,31 @@ def main():
     updater.fetch_macro()
 
     # ── XGBoost 高信心觸發推播 (≥80%) ─────────────────
-    # 只要 Lambda XGBoost 模型對單一方向信心 >=80%，無論其他訊號如何都推播
+    # ── Bark 推播：state-diff，只在 tier 改變時推送 ───────────────
     try:
-        _pu = float(updater.lb_result.get('prob_up', 0) or 0)
-        _pd = float(updater.lb_result.get('prob_dn', 0) or 0)
+        _pu       = float(updater.lb_result.get('prob_up', 0) or 0)
+        _pd       = float(updater.lb_result.get('prob_dn', 0) or 0)
         _lb_score = updater.lb_result.get('score', '?')
-        _lb_signal = updater.lb_result.get('signal', '?')
-        if _pu >= 80:
-            updater.send_push(
-                f"📈 黃金 XGBoost 高信心買進！{_pu:.0f}%",
-                f"上漲機率 {_pu:.0f}% | AI評分 {_lb_score} | 信號 {_lb_signal}",
-                is_leading=True
-            )
-        elif _pd >= 80:
-            updater.send_push(
-                f"📉 黃金 XGBoost 高信心賣出！{_pd:.0f}%",
-                f"下跌機率 {_pd:.0f}% | AI評分 {_lb_score} | 信號 {_lb_signal}",
-                is_leading=True
-            )
+        _lb_sig   = updater.lb_result.get('signal', '?')
+        _aws_key2    = os.environ.get('AWS_ACCESS_KEY_ID', '')
+        _aws_secret2 = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+        _push_s3b = None
+        if _aws_key2 and _aws_secret2:
+            import boto3 as _b3
+            _push_s3b = _b3.client('s3', region_name='ap-northeast-1',
+                                   aws_access_key_id=_aws_key2,
+                                   aws_secret_access_key=_aws_secret2)
+        _should, _reason = _should_push(
+            _pu, _pd, str(_lb_sig), _push_s3b, 'gld-mms-data-richtrong')
+        if _should:
+            _title = f'黃金 SIGNAL | {_reason}'
+            _body  = f'上漲 {_pu:.0f}% ↑ 下跌 {_pd:.0f}% ↓ | 評分 {_lb_score}'
+            updater.send_push(_title, _body, is_leading=True)
+            print(f"[INFO] 推播送出 | {_reason}")
+        else:
+            print(f"[INFO] 推播靜默（tier={_signal_tier(_pu, _pd)}，狀態未變）")
     except Exception as _e:
-        print(f"[WARN] 高信心推播檢查失敗: {_e}")
+        print(f"[WARN] 推播處理失敗: {_e}")
 
     updater.update_html(args.html)
 
