@@ -1235,6 +1235,7 @@ class GldMmsUpdaterV6:
         return signals
 
     def update_html(self, html_file: str):
+        print("[INFO] update_html started")
         DATA_JSON_PATH = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), 'data.json')
         history    = _load_history(DATA_JSON_PATH)
