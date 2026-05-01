@@ -1206,6 +1206,18 @@ class GldMmsUpdaterV6:
         prob_up = self.lb_result.get('prob_up')
         prob_dn = self.lb_result.get('prob_dn')
 
+        # gold_history for assets correlation（update_html scope）
+        gold_history = []
+        try:
+            if 'GC=F' in self.daily and self.daily['GC=F']:
+                gold_history = [float(r.get('close', 0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
+            if not gold_history:
+                _lp = float(self.lb_result.get('gold', {}).get('price', 0) or 0)
+                if _lp > 0:
+                    gold_history = [_lp]
+        except Exception:
+            pass
+
         data = {
             'timestamp':    datetime.utcnow().isoformat() + 'Z',
             'version':      'v6.0 Top-10%-Model',
