@@ -3,11 +3,9 @@ name: GLD-MMS 24H Lambda XGBoost 版 (v6.0)
 on:
   workflow_dispatch:
   schedule:
-    # 每 15 分鐘執行一次（GitHub Actions 用 UTC，cron 不分週末）
-    # GitHub Actions schedule 在高負載時可能延遲 5–60 分鐘
+    # 每 15 分鐘執行一次
     - cron: '*/15 * * * *'
 
-# 防止重疊執行
 concurrency:
   group: gld-mms-updater
   cancel-in-progress: false
@@ -34,7 +32,7 @@ jobs:
       - name: Run updater
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
-          # 自選股 ticker（要換股，改下面 4 行 commit 即可，15 分內生效）
+          # 自選股 ticker（改這 4 行 commit 即可，15 分內生效）
           TW_TICKER: '2330.TW'
           TW_NAME:   '台積電'
           US_TICKER: 'NVDA'
@@ -42,11 +40,17 @@ jobs:
           BARK_KEY_1: ${{ secrets.BARK_KEY_1 }}
           BARK_KEY_2: ${{ secrets.BARK_KEY_2 }}
           BARK_KEY_3: ${{ secrets.BARK_KEY_3 }}
+          # AWS（Lambda XGBoost 繼續用 AWS）
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # Twelve Data（自選股 + 黃金走勢）
           TWELVE_DATA_KEY: ${{ secrets.TWELVE_DATA_KEY }}
-        # yfinance 有時被 Yahoo Finance 封鎖（JSONDecodeError）
-        # || true 確保即使 yfinance 全失敗，Lambda fallback 資料仍能寫入 HTML
+          # Cloudflare R2（取代 AWS S3）
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT_URL: 'https://adb1040c847f4ae4a7d6bfedcccd7b77.r2.cloudflarestorage.com'
+          R2_BUCKET: 'richtrong-collect'
+        # yfinance 有時被 Yahoo Finance 封鎖 → || true 確保繼續 commit
         run: |
           python update_gld_data.py \
             --html docs/index.html \
@@ -56,7 +60,11 @@ jobs:
             --bark-key-3 "${BARK_KEY_3:-}" \
             --aws-access-key "${AWS_ACCESS_KEY_ID:-}" \
             --aws-secret-key "${AWS_SECRET_ACCESS_KEY:-}" \
-            --twelve-data-key "${TWELVE_DATA_KEY:-}" || true
+            --twelve-data-key "${TWELVE_DATA_KEY:-}" \
+            --r2-access-key "${R2_ACCESS_KEY_ID:-}" \
+            --r2-secret-key "${R2_SECRET_ACCESS_KEY:-}" \
+            --r2-endpoint "${R2_ENDPOINT_URL:-}" \
+            --r2-bucket "${R2_BUCKET:-}" || true
 
       - name: Force touch timestamp if no change
         run: |
