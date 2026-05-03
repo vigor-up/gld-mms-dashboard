@@ -1,4 +1,4 @@
-name: GLD-MMS 24H Lambda XGBoost 版 (v6.0)
+name: GLD-MMS 24H Ensemble XGBoost v2.0
 
 on:
   workflow_dispatch:
@@ -13,7 +13,7 @@ concurrency:
 jobs:
   update-dashboard:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15   # Ensemble 首次訓練需要較長時間
 
     steps:
       - name: Checkout
@@ -27,9 +27,13 @@ jobs:
       - name: Install deps
         run: |
           pip install --upgrade pip
-          pip install 'yfinance==0.2.40' pandas numpy requests boto3
+          pip install \
+            'yfinance==0.2.40' \
+            pandas numpy requests boto3 \
+            xgboost lightgbm catboost \
+            scikit-learn
 
-      - name: Run updater
+      - name: Run updater (Ensemble + Dashboard)
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           # 自選股 ticker（改這 4 行 commit 即可，15 分內生效）
@@ -40,17 +44,16 @@ jobs:
           BARK_KEY_1: ${{ secrets.BARK_KEY_1 }}
           BARK_KEY_2: ${{ secrets.BARK_KEY_2 }}
           BARK_KEY_3: ${{ secrets.BARK_KEY_3 }}
-          # AWS（Lambda XGBoost 繼續用 AWS）
+          # AWS（已移除 Lambda，僅保留 key 供舊版相容）
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          # Twelve Data（自選股 + 黃金走勢）
+          # Twelve Data（自選股 + 黃金 Ensemble 訓練資料）
           TWELVE_DATA_KEY: ${{ secrets.TWELVE_DATA_KEY }}
-          # Cloudflare R2（取代 AWS S3）
+          # Cloudflare R2（存 Ensemble 模型 + signal state/history）
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_ENDPOINT_URL: 'https://adb1040c847f4ae4a7d6bfedcccd7b77.r2.cloudflarestorage.com'
           R2_BUCKET: 'richtrong-collect'
-        # yfinance 有時被 Yahoo Finance 封鎖 → || true 確保繼續 commit
         run: |
           python update_gld_data.py \
             --html docs/index.html \
@@ -83,7 +86,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "沒有任何變更，跳過 commit"
           else
-            git commit -m "v6.0 Lambda XGBoost 更新: $(TZ='Asia/Taipei' date '+%Y-%m-%d %H:%M:%S') 台北"
+            git commit -m "v2.0 Ensemble XGBoost 更新: $(TZ='Asia/Taipei' date '+%Y-%m-%d %H:%M:%S') 台北"
             git push origin main
           fi
 
