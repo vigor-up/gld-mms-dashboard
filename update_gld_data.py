@@ -55,13 +55,14 @@ def _signal_tier(prob_up, prob_dn):
     if prob_dn >= 80:  return 'SELL'
     return 'WAIT'
 
-def _should_push(prob_up, prob_dn, signal, s3_client=None, bucket=''):
+def _should_push(prob_up, prob_dn, signal, s3_client=None, bucket='', state_key=None):
     """
     回傳 (要推播, 推播原因)
     規則：tier 改變才推，同狀態持續靜默；連續 4 小時發一次提醒
     """
     import time
-    last      = (_load_s3_json(s3_client, bucket, _S3_STATE_KEY) or {}) if s3_client else {}
+    _key      = state_key or _S3_STATE_KEY
+    last      = (_load_s3_json(s3_client, bucket, _key) or {}) if s3_client else {}
     now       = time.time()
     cur_tier  = _signal_tier(prob_up, prob_dn)
     last_tier = last.get('tier', 'UNKNOWN')
@@ -82,7 +83,7 @@ def _should_push(prob_up, prob_dn, signal, s3_client=None, bucket=''):
 
     new_state = {'tier': cur_tier, 'ts': now if reason else last_ts}
     if s3_client:
-        _save_s3_json(s3_client, bucket, _S3_STATE_KEY, new_state)
+        _save_s3_json(s3_client, bucket, _key, new_state)
     return bool(reason), reason
 
 
@@ -315,26 +316,11 @@ class GldMmsUpdaterV6:
         self.daily       = {}
         self.macro       = {}
         self.lb_result   = {}
+        self.asset_results = {}
         self.regime      = 'UNKNOWN'
 
-        # Lambda 繼續用 AWS
-        boto_kwargs = dict(region_name=aws_region)
-        if aws_ak and aws_sk:
-            boto_kwargs.update(dict(
-                aws_access_key_id=aws_ak,
-                aws_secret_access_key=aws_sk))
-        self.lb_client = boto3.client('lambda', **boto_kwargs)
-
-        # S3 改用 Cloudflare R2（由 R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY 控制）
-        _r2_key    = os.environ.get('R2_ACCESS_KEY_ID',     aws_ak  or '')
-        _r2_secret = os.environ.get('R2_SECRET_ACCESS_KEY', aws_sk  or '')
-        _r2_ep     = os.environ.get('R2_ENDPOINT_URL',
-                         'https://adb1040c847f4ae4a7d6bfedcccd7b77.r2.cloudflarestorage.com')
-        self.s3_client = boto3.client('s3',
-            endpoint_url=_r2_ep,
-            aws_access_key_id=_r2_key,
-            aws_secret_access_key=_r2_secret,
-            region_name='auto')
+        # lb_client 已移除（Lambda 改由 gld_xgb_ensemble.py 本地執行）
+        self.s3_client = boto3.client('s3',    **boto_kwargs)
 
     def _clean(self, df):
         """強化版：解 yfinance 0.2.5x+ MultiIndex + object dtype 問題"""
@@ -361,24 +347,41 @@ class GldMmsUpdaterV6:
         return df
 
     def invoke_lambda(self):
-        print("[INFO] 呼叫 Lambda gld-mms-updater...")
+        """
+        四資產 Ensemble 推論：黃金 / 白銀 / 元大台灣50(0050) / 納斯達克(QQQ)
+        XGBoost + LightGBM + CatBoost，模型存 Cloudflare R2
+        首次執行自動訓練（約 8-12 分鐘），之後 30 天重訓一次
+        """
+        print("[INFO] 執行四資產 Ensemble 推論...")
         try:
-            resp = self.lb_client.invoke(
-                FunctionName='gld-mms-updater',
-                InvocationType='RequestResponse',
-                Payload=json.dumps({}))
-            status = resp.get('StatusCode', 0)
-            print(f"[INFO] Lambda HTTP: {status}")
-            if status == 200:
-                s3r = self.s3_client.get_object(
-                    Bucket='gld-mms-data-richtrong', Key='data.json')
-                self.lb_result = json.loads(s3r['Body'].read().decode())
-                print(f"[SUCCESS] Lambda 分數: {self.lb_result.get('score','?')} "
-                      f"| 信號: {self.lb_result.get('signal','?')}")
-                return True
+            from gld_xgb_ensemble import run_all_assets
+            _td_key    = os.environ.get('TWELVE_DATA_KEY', '')
+            _r2_ep     = os.environ.get('R2_ENDPOINT_URL',
+                             'https://adb1040c847f4ae4a7d6bfedcccd7b77.r2.cloudflarestorage.com')
+            _r2_key    = os.environ.get('R2_ACCESS_KEY_ID', '')
+            _r2_sec    = os.environ.get('R2_SECRET_ACCESS_KEY', '')
+            _r2_bucket = os.environ.get('R2_BUCKET', 'richtrong-collect')
+            _r2 = None
+            if _r2_key and _r2_sec:
+                import boto3 as _b3
+                _r2 = _b3.client('s3',
+                    endpoint_url=_r2_ep,
+                    aws_access_key_id=_r2_key,
+                    aws_secret_access_key=_r2_sec,
+                    region_name='auto')
+            all_results = run_all_assets(_td_key, _r2, _r2_bucket)
+            self.lb_result     = all_results.get('gold', {})
+            self.asset_results = all_results
+            for key, res in all_results.items():
+                print(f"[SUCCESS] {res.get('_asset_emoji','')} {res.get('_asset_name',key)}: "
+                      f"{res.get('signal','?')} ({res.get('score','?')}) "
+                      f"val={res.get('model',{}).get('val_acc',0):.3f}")
+            return True
         except Exception as e:
-            print(f"[WARN] Lambda 失敗: {e}")
+            print(f"[WARN] 四資產 Ensemble 失敗: {e}")
+            import traceback; traceback.print_exc()
         self.lb_result = {}
+        self.asset_results = {}
         return False
 
     def _calc_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -855,17 +858,11 @@ class GldMmsUpdaterV6:
         try:
             _aws_key    = os.environ.get('AWS_ACCESS_KEY_ID', '')
             _aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-            _bucket     = os.environ.get('R2_BUCKET', 'richtrong-collect')
+            _bucket     = 'gld-mms-data-richtrong'
             if _aws_key and _aws_secret:
-                _r2_ep2 = os.environ.get('R2_ENDPOINT_URL',
-                    'https://adb1040c847f4ae4a7d6bfedcccd7b77.r2.cloudflarestorage.com')
-                _r2_k2  = os.environ.get('R2_ACCESS_KEY_ID',     _aws_key)
-                _r2_s2  = os.environ.get('R2_SECRET_ACCESS_KEY', _aws_secret)
-                _push_s3 = boto3.client('s3',
-                    endpoint_url=_r2_ep2,
-                    aws_access_key_id=_r2_k2,
-                    aws_secret_access_key=_r2_s2,
-                    region_name='auto')
+                _push_s3 = boto3.client('s3', region_name='ap-northeast-1',
+                                        aws_access_key_id=_aws_key,
+                                        aws_secret_access_key=_aws_secret)
                 # 取當前黃金收盤價
                 _gp = 0.0
                 for _sd in self.signals.values():
@@ -912,6 +909,21 @@ class GldMmsUpdaterV6:
             _lp = float(self.lb_result.get('gold', {}).get('price', 0) or 0)
             if _lp > 0:
                 gold_history = [_lp]
+
+        # 取最新技術指標快照（供信號品質評分器使用）
+        _latest_features = {}
+        try:
+            if hasattr(self, 'daily') and 'GC=F' in (self.daily or {}):
+                _raw_df = pd.DataFrame(self.daily['GC=F']).tail(60)
+                if not _raw_df.empty and 'close' in _raw_df.columns:
+                    from gld_xgb_ensemble import add_features
+                    _feat_df = add_features(_raw_df.rename(columns={
+                        'close': 'Close', 'high': 'High', 'low': 'Low', 'volume': 'Volume'
+                    }), pd.DataFrame(), pd.DataFrame(), pd.DataFrame())
+                    _latest_features = _feat_df.iloc[-1].dropna().to_dict()
+        except Exception:
+            pass
+        self.lb_result['_latest_features'] = _latest_features
 
         cot = self.macro.get('cot_gold', {})
         cot_bias = cot.get('score_add', 0)
@@ -1274,21 +1286,13 @@ class GldMmsUpdaterV6:
             'timestamp':    datetime.utcnow().isoformat() + 'Z',
             'version':      'v6.0 Top-10%-Model',
             'regime':       self.regime,
-            'assets': {
-                'silver': self._calc_simple_signal_for_ticker('SI=F',    '白銀',  gold_history, _td_key)
-                          or get_asset_data('SI=F', _td_key)
-                          or {'ticker': 'SI=F',    'name': '白銀', 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
-                'tw':     self._calc_simple_signal_for_ticker(TW_TICKER, TW_NAME, gold_history, _td_key)
-                          or get_asset_data(TW_TICKER, _td_key)
-                          or {'ticker': TW_TICKER, 'name': TW_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
-                'us':     self._calc_simple_signal_for_ticker(US_TICKER, US_NAME, gold_history, _td_key)
-                          or get_asset_data(US_TICKER, _td_key)
-                          or {'ticker': US_TICKER, 'name': US_NAME, 'price': None, 'change': None, 'signal': 'WAIT', 'confidence': 50},
-            },
+            'assets': _build_asset_dict(self.asset_results, gold_history, _td_key),
             'gold_history': gold_history,
             'tickers_meta': {
-                'tw': {'ticker': TW_TICKER, 'name': TW_NAME},
-                'us': {'ticker': US_TICKER, 'name': US_NAME},
+                'gold':   {'ticker': 'GC=F',    'name': '黃金',       'emoji': '🥇'},
+                'silver': {'ticker': 'SI=F',    'name': '白銀',       'emoji': '🥈'},
+                'tw':     {'ticker': '0050.TW', 'name': '元大台灣50', 'emoji': '🇹🇼'},
+                'us':     {'ticker': '^IXIC',   'name': '納斯達克',   'emoji': '🇺🇸'},
             },
             'daily':        self.daily,
             'macro':        self.macro,
@@ -1328,6 +1332,38 @@ class GldMmsUpdaterV6:
             print("[WARN] HTML data-source 標記未找到")
 
 
+def _build_asset_dict(asset_results: dict, gold_history: list, td_key: str) -> dict:
+    """四資產 HTML 注入 dict，從 Ensemble 結果 + Twelve Data 即時價建立"""
+    from gld_xgb_ensemble import ASSETS, _td_fetch
+    def _entry(key, res):
+        info   = ASSETS.get(key, {})
+        price  = res.get('gold', {}).get('price')
+        change = None
+        if not price and td_key:
+            try:
+                _, lat, prev = _td_fetch(info.get('ticker',''), td_key)
+                if lat:
+                    price  = round(lat, 2)
+                    change = round((lat-prev)/prev*100, 2) if prev else 0.0
+            except Exception: pass
+        return {
+            'ticker':     info.get('ticker', key),
+            'name':       res.get('_asset_name', info.get('name', key)),
+            'emoji':      res.get('_asset_emoji', info.get('emoji', '')),
+            'currency':   res.get('_currency', info.get('currency', 'USD')),
+            'price':      price,
+            'change':     change,
+            'signal':     res.get('signal', 'WAIT'),
+            'confidence': res.get('score', 50),
+            'prob_up':    res.get('prob_up', 50),
+            'prob_dn':    res.get('prob_dn', 50),
+            'val_acc':    round(res.get('model', {}).get('val_acc', 0) * 100, 1),
+            'horizons':   res.get('model', {}).get('horizons', {}),
+            'history':    gold_history if key == 'gold' else [],
+        }
+    return {k: _entry(k, asset_results.get(k, {})) for k in ['gold','silver','tw','us']}
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--html',             default='docs/index.html')
@@ -1338,23 +1374,11 @@ def main():
     p.add_argument('--aws-access-key',   default=None)
     p.add_argument('--aws-secret-key',   default=None)
     p.add_argument('--twelve-data-key',   default=None)
-    p.add_argument('--r2-endpoint',       default=None)
-    p.add_argument('--r2-access-key',     default=None)
-    p.add_argument('--r2-secret-key',     default=None)
-    p.add_argument('--r2-bucket',         default=None)
     p.add_argument('--aws-region',      default='ap-northeast-1')
     args, _ = p.parse_known_args()
 
     if args.twelve_data_key:
         os.environ['TWELVE_DATA_KEY'] = args.twelve_data_key
-    if args.r2_endpoint:
-        os.environ['R2_ENDPOINT_URL'] = args.r2_endpoint
-    if args.r2_access_key:
-        os.environ['R2_ACCESS_KEY_ID'] = args.r2_access_key
-    if args.r2_secret_key:
-        os.environ['R2_SECRET_ACCESS_KEY'] = args.r2_secret_key
-    if args.r2_bucket:
-        os.environ['R2_BUCKET'] = args.r2_bucket
     updater = GldMmsUpdaterV6(
         fred_key      = args.fred_key,
         bark_keys     = [args.bark_key_1, args.bark_key_2, args.bark_key_3],
@@ -1383,24 +1407,40 @@ def main():
         _push_s3b = None
         if _aws_key2 and _aws_secret2:
             import boto3 as _b3
-            _r2_ep3 = os.environ.get('R2_ENDPOINT_URL',
-                'https://adb1040c847f4ae4a7d6bfedcccd7b77.r2.cloudflarestorage.com')
-            _r2_k3  = os.environ.get('R2_ACCESS_KEY_ID',     _aws_key2)
-            _r2_s3  = os.environ.get('R2_SECRET_ACCESS_KEY', _aws_secret2)
-            _push_s3b = _b3.client('s3',
-                endpoint_url=_r2_ep3,
-                aws_access_key_id=_r2_k3,
-                aws_secret_access_key=_r2_s3,
-                region_name='auto')
-        _should, _reason = _should_push(
-            _pu, _pd, str(_lb_sig), _push_s3b, 'gld-mms-data-richtrong')
-        if _should:
-            _title = f'黃金 SIGNAL | {_reason}'
-            _body  = f'上漲 {_pu:.0f}% ↑ 下跌 {_pd:.0f}% ↓ | 評分 {_lb_score}'
-            updater.send_push(_title, _body, is_leading=True)
-            print(f"[INFO] 推播送出 | {_reason}")
-        else:
-            print(f"[INFO] 推播靜默（tier={_signal_tier(_pu, _pd)}，狀態未變）")
+            _push_s3b = _b3.client('s3', region_name='ap-northeast-1',
+                                   aws_access_key_id=_aws_key2,
+                                   aws_secret_access_key=_aws_secret2)
+        # ── 四資產各自推播（A+B+D 品質評分）──────────────────
+        from signal_quality import evaluate_signal
+        _r2_bucket_push = os.environ.get('R2_BUCKET', 'richtrong-collect')
+        for _ak, _ares in updater.asset_results.items():
+            try:
+                _a_pu  = float(_ares.get('prob_up', 50))
+                _a_pd  = float(_ares.get('prob_dn', 50))
+                _a_sig = str(_ares.get('signal', ''))
+                _a_price = float(_ares.get('gold', {}).get('price', 0) or 0)
+                # state-diff 推播（per-asset，用 asset key 區分）
+                _a_state_key = f'signal_state_{_ak}.json'
+                _a_should, _a_reason = _should_push(
+                    _a_pu, _a_pd, _a_sig, _push_s3b, _r2_bucket_push,
+                    state_key=_a_state_key)
+                if not _a_should:
+                    print(f"[INFO] {_ares.get('_asset_emoji','')} {_ak} 推播靜默（tier 未變）")
+                    continue
+                # A+B+D 品質評分
+                _sq = evaluate_signal(_ares)
+                _emoji = _ares.get('_asset_emoji', '')
+                _aname = _ares.get('_asset_name', _ak)
+                print(f"[INFO] {_emoji} {_aname} 品質分: {_sq.total_score}/100 | {_sq.score_breakdown}")
+                if _sq.should_push:
+                    _title = f"{_emoji} {_aname} | {_sq.bark_title()}"
+                    _body  = _sq.bark_body(_a_price)
+                    updater.send_push(_title, _body, is_leading=True)
+                    print(f"[INFO] 推播送出 {_emoji} {_aname}（品質分 {_sq.total_score}）")
+                else:
+                    print(f"[INFO] {_emoji} {_aname} 品質分不足（{_sq.total_score} < 70），靜默")
+            except Exception as _pe:
+                print(f"[WARN] {_ak} 推播處理失敗: {_pe}")
     except Exception as _e:
         print(f"[WARN] 推播處理失敗: {_e}")
 
