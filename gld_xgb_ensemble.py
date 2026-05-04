@@ -35,7 +35,7 @@ ASSETS = {
     'gold':   {'ticker': 'GC=F',    'name': '黃金',      'currency': 'USD', 'emoji': '🥇'},
     'silver': {'ticker': 'SI=F',    'name': '白銀',      'currency': 'USD', 'emoji': '🥈'},
     'tw':     {'ticker': '0050.TW', 'name': '元大台灣50','currency': 'TWD', 'emoji': '🇹🇼'},
-    'us':     {'ticker': '^IXIC',   'name': '納斯達克',  'currency': 'USD', 'emoji': '🇺🇸'},
+    'us':     {'ticker': 'QQQ',   'name': '納斯達克',  'currency': 'USD', 'emoji': '🇺🇸'},
 }
 
 # Twelve Data ticker 對照
@@ -47,12 +47,13 @@ TD_TICKERS = {
     '^VIX':     ('VIXY',    None),
     'GLD':      ('GLD',     None),
     'GDX':      ('GDX',     None),
+    'QQQ':      ('QQQ',     None),
     '0050.TW':  ('0050',    'XTAI'),
-    '^IXIC':    ('QQQ',     None),
+    'QQQ':    ('QQQ',     None),
 }
 TD_FALLBACK = {
     '0050.TW': ('EWT', None),
-    '^IXIC':   ('TQQQ', None),
+    'QQQ':   ('TQQQ', None),
 }
 
 # ── Twelve Data 抓取 ─────────────────────────────────
