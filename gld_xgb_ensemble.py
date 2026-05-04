@@ -27,7 +27,7 @@ from datetime import datetime, timezone, timedelta
 MODEL_KEY      = 'models/ensemble_v2.pkl'   # R2 存放路徑
 MODEL_MAX_AGE  = 30                          # 模型超過幾天自動重訓
 HORIZONS       = ['1d', '5d', '30d']
-MIN_TRAIN_ROWS = 400                         # 最少訓練筆數
+MIN_TRAIN_ROWS = 200                         # 最少訓練筆數
 TD_BASE        = 'https://api.twelvedata.com'
 
 # ── 四資產設定（寫死，不可自選）────────────────────────
@@ -42,9 +42,9 @@ ASSETS = {
 TD_TICKERS = {
     'GC=F':     ('XAU/USD', None),
     'SI=F':     ('SLV',     None),
-    'DX-Y.NYB': ('DXY',     None),
-    '^TNX':     ('TNX',     None),
-    '^VIX':     ('VIX',     None),
+    'DX-Y.NYB': ('UUP',     None),
+    '^TNX':     ('TLT',     None),
+    '^VIX':     ('VIXY',    None),
     'GLD':      ('GLD',     None),
     'GDX':      ('GDX',     None),
     '0050.TW':  ('0050',    'XTAI'),
