@@ -370,14 +370,18 @@ class GldMmsUpdaterV6:
             _r2_key    = os.environ.get('R2_ACCESS_KEY_ID', '')
             _r2_sec    = os.environ.get('R2_SECRET_ACCESS_KEY', '')
             _r2_bucket = os.environ.get('R2_BUCKET', 'richtrong-collect')
+            print(f"[INFO] R2 key={bool(_r2_key)} ep={_r2_ep[:40]}")
             _r2 = None
-            if _r2_key and _r2_sec:
+            try:
                 import boto3 as _b3
                 _r2 = _b3.client('s3',
                     endpoint_url=_r2_ep,
                     aws_access_key_id=_r2_key,
                     aws_secret_access_key=_r2_sec,
                     region_name='auto')
+                print("[INFO] R2 client OK")
+            except Exception as _r2e:
+                print(f"[WARN] R2 client 建立失敗: {_r2e}")
             all_results = run_all_assets(_td_key, _r2, _r2_bucket)
             self.lb_result     = all_results.get('gold', {})
             self.asset_results = all_results
