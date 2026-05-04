@@ -1276,10 +1276,37 @@ class GldMmsUpdaterV6:
         return signals
 
     def update_html(self, html_file: str):
+        print("[INFO] update_html called")
+        _td_key    = os.environ.get('TWELVE_DATA_KEY', '')
+        _r2_bucket = os.environ.get('R2_BUCKET', 'richtrong-collect')
+        _live_win_rate = None
+        try:
+            _gp = 0.0
+            try:
+                _gc, _, _ = _td_fetch('GC=F', _td_key)
+                if _gc: _gp = float(_gc[-1])
+            except Exception: pass
+            if not _gp and self.daily.get('GC=F'):
+                _gp = float((self.daily['GC=F'][-1] or {}).get('close', 0) or 0)
+            _lb_sig = str(self.lb_result.get('signal', ''))
+            _lb_pu  = float(self.lb_result.get('prob_up', 0) or 0)
+            _lb_pd  = float(self.lb_result.get('prob_dn', 0) or 0)
+            _lb_sc  = int(self.lb_result.get('score', 0) or 0)
+            if _gp and self.s3_client:
+                _live_win_rate, _ = _update_signal_history(
+                    self.s3_client, _r2_bucket,
+                    signal=_lb_sig, prob_up=_lb_pu,
+                    prob_dn=_lb_pd, score=_lb_sc, price=_gp)
+            _r2_hist = (_load_s3_json(self.s3_client, _r2_bucket, _S3_HISTORY_KEY)
+                        if self.s3_client else []) or []
+            _live_win_rate = calc_win_rate_20(_r2_hist, 20)
+            print(f"[INFO] signal_history {len(_r2_hist)} records, win_rate={_live_win_rate}")
+        except Exception as _rhe:
+            print(f"[WARN] signal_history: {_rhe}")
         DATA_JSON_PATH = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), 'data.json')
         history    = _load_history(DATA_JSON_PATH)
-        win_rate   = calc_win_rate_20(history, 20)
+        win_rate   = _live_win_rate if _live_win_rate is not None else calc_win_rate_20(history, 20)
         bt_metrics = calc_backtest_metrics(history, 100)
 
         cot = self.macro.get('cot_gold', {})
@@ -1294,6 +1321,18 @@ class GldMmsUpdaterV6:
         perf = self.lb_result.get('performance', {})
         prob_up = self.lb_result.get('prob_up')
         prob_dn = self.lb_result.get('prob_dn')
+
+        # gold_history
+        gold_history = []
+        try:
+            _gc2, _, _ = _td_fetch('GC=F', _td_key)
+            if _gc2: gold_history = [round(x,2) for x in _gc2[-30:]]
+        except Exception: pass
+        if not gold_history and self.daily.get('GC=F'):
+            gold_history = [float(r.get('close',0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
+        if not gold_history:
+            _lp2 = float(self.lb_result.get('gold',{}).get('price',0) or 0)
+            if _lp2: gold_history = [_lp2]
 
         data = {
             'timestamp':    datetime.utcnow().isoformat() + 'Z',
@@ -1310,7 +1349,7 @@ class GldMmsUpdaterV6:
             'daily':        self.daily,
             'macro':        self.macro,
             'signals':      self.calculate_signals() or self._lambda_fallback_signal(),
-            'win_rate_20':  _live_win_rate,
+            'win_rate_20':  win_rate,
             'backtest':     bt_metrics,
             'lambda': {
                 'score':      self.lb_result.get('score'),
