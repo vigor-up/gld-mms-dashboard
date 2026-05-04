@@ -21,11 +21,10 @@ import pandas as pd
 import numpy as np
 
 # ── 白銀/台股/美股 Simple Asset Fetcher ───────────────────
-# 四資產寫死（不可自選）
-TW_TICKER = '0050.TW'    # 元大台灣50
-US_TICKER = 'NVDA'       # 納斯達克代理（QQQ 在 Ensemble）
-TW_NAME   = '元大台灣50'
-US_NAME   = 'NVIDIA'
+TW_TICKER = '0050.TW'    # 寫死，不可自選
+US_TICKER = 'NVDA'       # 寫死，不可自選
+TW_NAME   = '元大台灣50'  # 寫死
+US_NAME   = 'NVIDIA'      # 寫死
 
 # ─── Bark 推播：只在狀態改變時推送 ─────────────────────────────────
 _S3_STATE_KEY   = 'signal_state.json'
