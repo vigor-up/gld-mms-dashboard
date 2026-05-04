@@ -1347,9 +1347,9 @@ def _build_asset_dict(asset_results: dict, gold_history: list, td_key: str) -> d
                     change = round((lat-prev)/prev*100, 2) if prev else 0.0
             except Exception: pass
         return {
-            'ticker':     info.get('ticker', key),
-            'name':       res.get('_asset_name', info.get('name', key)),
-            'emoji':      res.get('_asset_emoji', info.get('emoji', '')),
+            'ticker':     info.get('ticker', key),   # 永遠用 ASSETS 寫死的值
+            'name':       info.get('name', key),              # 永遠用 ASSETS 寫死的值
+            'emoji':      info.get('emoji', ''),              # 永遠用 ASSETS 寫死的值
             'currency':   res.get('_currency', info.get('currency', 'USD')),
             'price':      price,
             'change':     change,
