@@ -1355,7 +1355,7 @@ class GldMmsUpdaterV6:
                 'gold':   {'ticker': 'GC=F',    'name': '黃金',       'emoji': '🥇'},
                 'silver': {'ticker': 'SI=F',    'name': '白銀',       'emoji': '🥈'},
                 'tw':     {'ticker': '0050.TW', 'name': '元大台灣50', 'emoji': '🇹🇼'},
-                'us':     {'ticker': '^IXIC',   'name': '納斯達克',   'emoji': '🇺🇸'},
+                'us':     {'ticker': 'QQQ',   'name': '納斯達克',   'emoji': '🇺🇸'},
             },
             'daily':        self.daily,
             'macro':        self.macro,
@@ -1405,7 +1405,7 @@ def _build_asset_dict(asset_results: dict, gold_history: list, td_key: str) -> d
         'gold':   {'ticker': 'GC=F',    'name': '黃金',       'currency': 'USD', 'emoji': '🥇'},
         'silver': {'ticker': 'SI=F',    'name': '白銀',       'currency': 'USD', 'emoji': '🥈'},
         'tw':     {'ticker': '0050.TW', 'name': '元大台灣50', 'currency': 'TWD', 'emoji': '🇹🇼'},
-        'us':     {'ticker': '^IXIC',   'name': '納斯達克',   'currency': 'USD', 'emoji': '🇺🇸'},
+        'us':     {'ticker': 'QQQ',     'name': '納斯達克',   'currency': 'USD', 'emoji': '🇺🇸'},
     }
 
     def _entry(key, res):
@@ -1485,14 +1485,8 @@ def main():
         _pd       = float(updater.lb_result.get('prob_dn', 0) or 0)
         _lb_score = updater.lb_result.get('score', '?')
         _lb_sig   = updater.lb_result.get('signal', '?')
-        _aws_key2    = os.environ.get('AWS_ACCESS_KEY_ID', '')
-        _aws_secret2 = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-        _push_s3b = None
-        if _aws_key2 and _aws_secret2:
-            import boto3 as _b3
-            _push_s3b = _b3.client('s3', region_name='ap-northeast-1',
-                                   aws_access_key_id=_aws_key2,
-                                   aws_secret_access_key=_aws_secret2)
+        # Bark state 讀寫改用 Cloudflare R2（AWS 已退租）
+        _push_s3b = updater.s3_client  # 直接用已建立的 R2 client
         # ── 四資產各自推播（A+B+D 品質評分）──────────────────
         from signal_quality import evaluate_signal
         _r2_bucket_push = os.environ.get('R2_BUCKET', 'richtrong-collect')
