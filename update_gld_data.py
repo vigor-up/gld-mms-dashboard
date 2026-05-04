@@ -320,16 +320,20 @@ class GldMmsUpdaterV6:
         self.regime      = 'UNKNOWN'
 
         # lb_client 已移除（Lambda 改由 gld_xgb_ensemble.py 本地執行）
-        # S3 → Cloudflare R2
+        # S3 client 指向 Cloudflare R2
         _r2_key    = os.environ.get('R2_ACCESS_KEY_ID',     aws_ak or '')
         _r2_secret = os.environ.get('R2_SECRET_ACCESS_KEY', aws_sk or '')
         _r2_ep     = os.environ.get('R2_ENDPOINT_URL',
                          'https://adb1040c847f4ae4a7d6bfedcccd7b77.r2.cloudflarestorage.com')
-        self.s3_client = boto3.client('s3',
-            endpoint_url=_r2_ep,
-            aws_access_key_id=_r2_key,
-            aws_secret_access_key=_r2_secret,
-            region_name='auto')
+        try:
+            self.s3_client = boto3.client('s3',
+                endpoint_url=_r2_ep,
+                aws_access_key_id=_r2_key,
+                aws_secret_access_key=_r2_secret,
+                region_name='auto') if (_r2_key and _r2_secret) else None
+        except Exception as _s3e:
+            print(f"[WARN] R2 client init: {_s3e}")
+            self.s3_client = None
 
     def _clean(self, df):
         """強化版：解 yfinance 0.2.5x+ MultiIndex + object dtype 問題"""
@@ -370,18 +374,14 @@ class GldMmsUpdaterV6:
             _r2_key    = os.environ.get('R2_ACCESS_KEY_ID', '')
             _r2_sec    = os.environ.get('R2_SECRET_ACCESS_KEY', '')
             _r2_bucket = os.environ.get('R2_BUCKET', 'richtrong-collect')
-            print(f"[INFO] R2 key={bool(_r2_key)} ep={_r2_ep[:40]}")
             _r2 = None
-            try:
+            if _r2_key and _r2_sec:
                 import boto3 as _b3
                 _r2 = _b3.client('s3',
                     endpoint_url=_r2_ep,
                     aws_access_key_id=_r2_key,
                     aws_secret_access_key=_r2_sec,
                     region_name='auto')
-                print("[INFO] R2 client OK")
-            except Exception as _r2e:
-                print(f"[WARN] R2 client 建立失敗: {_r2e}")
             all_results = run_all_assets(_td_key, _r2, _r2_bucket)
             self.lb_result     = all_results.get('gold', {})
             self.asset_results = all_results
@@ -1276,10 +1276,21 @@ class GldMmsUpdaterV6:
         return signals
 
     def update_html(self, html_file: str):
-        print("[INFO] update_html called")
+        """
+        完全防崩潰版 update_html
+        - 每個步驟獨立 try/except
+        - signals 完全不依賴 calculate_signals（直接用 lb_result）
+        - HTML 寫入一定執行，失敗才跳過
+        """
+        import traceback as _tb
+        print("[INFO] update_html started")
+
         _td_key    = os.environ.get('TWELVE_DATA_KEY', '')
         _r2_bucket = os.environ.get('R2_BUCKET', 'richtrong-collect')
-        _live_win_rate = None
+        _r2_s3     = self.s3_client  # Cloudflare R2 client
+
+        # ── Step 1: R2 signal_history ──────────────────────────────
+        win_rate = None
         try:
             _gp = 0.0
             try:
@@ -1287,112 +1298,164 @@ class GldMmsUpdaterV6:
                 if _gc: _gp = float(_gc[-1])
             except Exception: pass
             if not _gp and self.daily.get('GC=F'):
-                _gp = float((self.daily['GC=F'][-1] or {}).get('close', 0) or 0)
-            _lb_sig = str(self.lb_result.get('signal', ''))
-            _lb_pu  = float(self.lb_result.get('prob_up', 0) or 0)
-            _lb_pd  = float(self.lb_result.get('prob_dn', 0) or 0)
-            _lb_sc  = int(self.lb_result.get('score', 0) or 0)
-            if _gp and self.s3_client:
-                _live_win_rate, _ = _update_signal_history(
-                    self.s3_client, _r2_bucket,
-                    signal=_lb_sig, prob_up=_lb_pu,
-                    prob_dn=_lb_pd, score=_lb_sc, price=_gp)
-            _r2_hist = (_load_s3_json(self.s3_client, _r2_bucket, _S3_HISTORY_KEY)
-                        if self.s3_client else []) or []
-            _live_win_rate = calc_win_rate_20(_r2_hist, 20)
-            print(f"[INFO] signal_history {len(_r2_hist)} records, win_rate={_live_win_rate}")
-        except Exception as _rhe:
-            print(f"[WARN] signal_history: {_rhe}")
-        DATA_JSON_PATH = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 'data.json')
-        history    = _load_history(DATA_JSON_PATH)
-        win_rate   = _live_win_rate if _live_win_rate is not None else calc_win_rate_20(history, 20)
-        bt_metrics = calc_backtest_metrics(history, 100)
+                _rows = self.daily['GC=F']
+                if _rows: _gp = float((_rows[-1] or {}).get('close', 0) or 0)
 
-        cot = self.macro.get('cot_gold', {})
-        breakdown = [
-            f"COT大戶偏多: {cot.get('spec_net_pct', 0)}% OI",
-            f"LS比率: {cot.get('spec_ls_ratio', '?')}",
-        ]
-        if win_rate is not None:
-            breakdown.append(f"近20次勝率: {win_rate}%")
+            if _gp and _r2_s3:
+                _update_signal_history(
+                    _r2_s3, _r2_bucket,
+                    signal=str(self.lb_result.get('signal', '')),
+                    prob_up=float(self.lb_result.get('prob_up', 0) or 0),
+                    prob_dn=float(self.lb_result.get('prob_dn', 0) or 0),
+                    score=int(self.lb_result.get('score', 0) or 0),
+                    price=_gp)
 
-        lb_model = self.lb_result.get('model', {})
-        perf = self.lb_result.get('performance', {})
-        prob_up = self.lb_result.get('prob_up')
-        prob_dn = self.lb_result.get('prob_dn')
+            _hist = (_load_s3_json(_r2_s3, _r2_bucket, _S3_HISTORY_KEY)
+                     if _r2_s3 else []) or []
+            win_rate = calc_win_rate_20(_hist, 20)
+            print(f"[INFO] signal_history: {len(_hist)} records, win_rate={win_rate}")
+        except Exception as _e:
+            print(f"[WARN] signal_history failed: {_e}")
 
-        # gold_history
+        # ── Step 2: backtest metrics ───────────────────────────────
+        bt_metrics = {}
+        try:
+            _djp = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data.json')
+            _hist_local = _load_history(_djp)
+            bt_metrics  = calc_backtest_metrics(_hist_local, 100)
+        except Exception as _e:
+            print(f"[WARN] bt_metrics: {_e}")
+
+        # ── Step 3: gold_history ───────────────────────────────────
         gold_history = []
         try:
             _gc2, _, _ = _td_fetch('GC=F', _td_key)
-            if _gc2: gold_history = [round(x,2) for x in _gc2[-30:]]
+            if _gc2: gold_history = [round(float(x), 2) for x in _gc2[-30:]]
         except Exception: pass
         if not gold_history and self.daily.get('GC=F'):
-            gold_history = [float(r.get('close',0)) for r in self.daily['GC=F'][-30:] if r.get('close')]
+            gold_history = [float(r.get('close', 0))
+                            for r in (self.daily.get('GC=F') or [])[-30:]
+                            if r.get('close')]
         if not gold_history:
-            _lp2 = float(self.lb_result.get('gold',{}).get('price',0) or 0)
+            _lp2 = float((self.lb_result or {}).get('gold', {}).get('price', 0) or 0)
             if _lp2: gold_history = [_lp2]
+        print(f"[INFO] gold_history: {len(gold_history)} pts")
 
-        _safe_signals = {}
+        # ── Step 4: assets ─────────────────────────────────────────
+        assets_data = {}
         try:
-            _safe_signals = self.calculate_signals() or {}
-        except Exception as _se:
-            print(f"[WARN] calculate_signals: {_se}")
-        if not _safe_signals:
-            try:
-                _safe_signals = self._lambda_fallback_signal() or {}
-            except Exception as _fe:
-                print(f"[WARN] fallback_signal: {_fe}")
+            assets_data = _build_asset_dict(self.asset_results or {}, gold_history, _td_key)
+            for _k, _v in (assets_data or {}).items():
+                print(f"[INFO] asset {_k}: {_v.get('name')} ${_v.get('price')} {_v.get('signal')}")
+        except Exception as _e:
+            print(f"[WARN] assets: {_e}")
+            _tb.print_exc()
 
-                data = {
+        # ── Step 5: signals（直接從 lb_result，不呼叫 calculate_signals）──
+        _lb = self.lb_result or {}
+        _lb_score  = _lb.get('score')
+        _lb_signal = _lb.get('signal', '')
+        _lb_pu     = _lb.get('prob_up', 0)
+        _lb_pd     = _lb.get('prob_dn', 0)
+        _cot       = (self.macro or {}).get('cot_gold', {}) or {}
+        _perf      = _lb.get('performance', {}) or {}
+        _lb_model  = _lb.get('model', {}) or {}
+
+        signals_data = {
+            'score':       _lb_score,
+            'signal':      _lb_signal,
+            'label':       _lb.get('label', ''),
+            'prob_up':     _lb_pu,
+            'prob_dn':     _lb_pd,
+            'status':      _lb.get('status', 'Ensemble v2.0'),
+            'ai_confidence': _lb_score,
+            'breakdown':   [
+                f"COT大戶偏多: {_cot.get('spec_net_pct', 0)}% OI",
+                f"多空比(LS): {_cot.get('spec_ls_ratio', '--')}",
+            ],
+            'risk_tip':    _lb.get('risk_tip', ''),
+            'smart_money': _lb.get('smart_money', {}),
+            'performance': _perf,
+            'model':       _lb_model,
+        }
+        print(f"[INFO] signals: score={_lb_score} signal={_lb_signal}")
+
+        # ── Step 6: Bark 推播（state-diff）────────────────────────
+        try:
+            _r2_bucket_push = os.environ.get('R2_BUCKET', 'richtrong-collect')
+            from signal_quality import evaluate_signal
+            for _ak, _ares in (self.asset_results or {}).items():
+                try:
+                    _a_pu = float(_ares.get('prob_up', 50))
+                    _a_pd = float(_ares.get('prob_dn', 50))
+                    _a_sig = str(_ares.get('signal', ''))
+                    _a_price = float((_ares.get('gold') or {}).get('price', 0) or 0)
+                    _a_state_key = f'signal_state_{_ak}.json'
+                    _a_should, _a_reason = _should_push(
+                        _a_pu, _a_pd, _a_sig, _r2_s3, _r2_bucket_push,
+                        state_key=_a_state_key)
+                    if not _a_should:
+                        continue
+                    _sq = evaluate_signal(_ares)
+                    _emoji = _ares.get('_asset_emoji', '')
+                    _aname = _ares.get('_asset_name', _ak)
+                    print(f"[INFO] {_emoji} {_aname} 品質分: {_sq.total_score}/100")
+                    if _sq.should_push:
+                        _title = f"{_emoji} {_aname} | {_sq.bark_title()}"
+                        _body  = _sq.bark_body(float(_a_price))
+                        self.send_push(_title, _body, is_leading=True)
+                        print(f"[INFO] Bark 推播: {_emoji} {_aname} 品質分 {_sq.total_score}")
+                except Exception as _pe:
+                    print(f"[WARN] push {_ak}: {_pe}")
+        except Exception as _be:
+            print(f"[WARN] Bark block: {_be}")
+
+        # ── Step 7: data dict ──────────────────────────────────────
+        data = {
             'timestamp':    datetime.utcnow().isoformat() + 'Z',
             'version':      'v6.0 Top-10%-Model',
             'regime':       self.regime,
-            'assets': _build_asset_dict(self.asset_results, gold_history, _td_key),
+            'assets':       assets_data,
             'gold_history': gold_history,
             'tickers_meta': {
                 'gold':   {'ticker': 'GC=F',    'name': '黃金',       'emoji': '🥇'},
                 'silver': {'ticker': 'SI=F',    'name': '白銀',       'emoji': '🥈'},
                 'tw':     {'ticker': '0050.TW', 'name': '元大台灣50', 'emoji': '🇹🇼'},
-                'us':     {'ticker': 'QQQ',   'name': '納斯達克',   'emoji': '🇺🇸'},
+                'us':     {'ticker': 'QQQ',     'name': '納斯達克',   'emoji': '🇺🇸'},
             },
             'daily':        self.daily,
             'macro':        self.macro,
-                        'signals':      _safe_signals,
+            'signals':      signals_data,
             'win_rate_20':  win_rate,
             'backtest':     bt_metrics,
-            'lambda': {
-                'score':      self.lb_result.get('score'),
-                'signal':     self.lb_result.get('signal'),
-                'status':     self.lb_result.get('status', '未連線'),
-                'smart_money':self.lb_result.get('smart_money', {}),
-                'performance':perf,
-                'model':      lb_model,
-                'prob_up':    prob_up,
-                'prob_dn':    prob_dn,
-                'breakdown':  breakdown,
-            },
+            'lambda':       signals_data,
         }
 
-        with open(html_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-        sm = '<script id="data-source">'
-        em = '</script>'
-        si = content.find(sm)
-        ei = content.find(em, si)
-        if si != -1 and ei != -1:
-            dj = json.dumps(data, cls=NumpyEncoder)
-            new_c = (
-                content[:si]
-                + f'{sm}window.AUTO_DATA = {dj};{em}'
-                + content[ei + len(em):]
-            )
-            with open(html_file, 'w', encoding='utf-8') as f:
-                f.write(new_c)
-            print("[SUCCESS] v6.0 Top-10% 模型旗艦版已更新 HTML")
-        else:
-            print("[WARN] HTML data-source 標記未找到")
+        # ── Step 8: 寫入 HTML ──────────────────────────────────────
+        try:
+            with open(html_file, 'r', encoding='utf-8') as f:
+                _content = f.read()
+            _sm = '<script id="data-source">'
+            _em = '</script>'
+            _si = _content.find(_sm)
+            _ei = _content.find(_em, _si)
+            if _si >= 0 and _ei >= 0:
+                _dj = json.dumps(data, cls=NumpyEncoder)
+                _new_c = (_content[:_si]
+                          + _sm + 'window.AUTO_DATA = ' + _dj + ';' + _em
+                          + _content[_ei + len(_em):])
+                with open(html_file, 'w', encoding='utf-8') as f:
+                    f.write(_new_c)
+                print(f"[SUCCESS] HTML written: {len(_dj)} bytes, "
+                      f"gold=${assets_data.get('gold',{}).get('price')}, "
+                      f"tw={assets_data.get('tw',{}).get('name')}")
+            else:
+                print("[WARN] data-source script tag not found in HTML")
+        except Exception as _he:
+            print(f"[ERROR] HTML write failed: {_he}")
+            _tb.print_exc()
+
+        print("[INFO] update_html done")
 
 
 def _build_asset_dict(asset_results: dict, gold_history: list, td_key: str) -> dict:
@@ -1405,7 +1468,7 @@ def _build_asset_dict(asset_results: dict, gold_history: list, td_key: str) -> d
         'gold':   {'ticker': 'GC=F',    'name': '黃金',       'currency': 'USD', 'emoji': '🥇'},
         'silver': {'ticker': 'SI=F',    'name': '白銀',       'currency': 'USD', 'emoji': '🥈'},
         'tw':     {'ticker': '0050.TW', 'name': '元大台灣50', 'currency': 'TWD', 'emoji': '🇹🇼'},
-        'us':     {'ticker': 'QQQ',     'name': '納斯達克',   'currency': 'USD', 'emoji': '🇺🇸'},
+        'us':     {'ticker': '^IXIC',   'name': '納斯達克',   'currency': 'USD', 'emoji': '🇺🇸'},
     }
 
     def _entry(key, res):
@@ -1485,8 +1548,14 @@ def main():
         _pd       = float(updater.lb_result.get('prob_dn', 0) or 0)
         _lb_score = updater.lb_result.get('score', '?')
         _lb_sig   = updater.lb_result.get('signal', '?')
-        # Bark state 讀寫改用 Cloudflare R2（AWS 已退租）
-        _push_s3b = updater.s3_client  # 直接用已建立的 R2 client
+        _aws_key2    = os.environ.get('AWS_ACCESS_KEY_ID', '')
+        _aws_secret2 = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+        _push_s3b = None
+        if _aws_key2 and _aws_secret2:
+            import boto3 as _b3
+            _push_s3b = _b3.client('s3', region_name='ap-northeast-1',
+                                   aws_access_key_id=_aws_key2,
+                                   aws_secret_access_key=_aws_secret2)
         # ── 四資產各自推播（A+B+D 品質評分）──────────────────
         from signal_quality import evaluate_signal
         _r2_bucket_push = os.environ.get('R2_BUCKET', 'richtrong-collect')
