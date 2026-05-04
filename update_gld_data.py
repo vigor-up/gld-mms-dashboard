@@ -1333,35 +1333,52 @@ class GldMmsUpdaterV6:
 
 
 def _build_asset_dict(asset_results: dict, gold_history: list, td_key: str) -> dict:
-    """四資產 HTML 注入 dict，從 Ensemble 結果 + Twelve Data 即時價建立"""
-    from gld_xgb_ensemble import ASSETS, _td_fetch
+    """
+    四資產 HTML 注入 dict（寫死版本，不依賴 Ensemble import）
+    名稱/ticker 永遠使用下方硬編碼值，不被 res 覆蓋
+    """
+    # ── 四資產硬編碼（寫死，不可自選）────────────────────────
+    _FIXED = {
+        'gold':   {'ticker': 'GC=F',    'name': '黃金',      'currency': 'USD', 'emoji': '🥇'},
+        'silver': {'ticker': 'SI=F',    'name': '白銀',      'currency': 'USD', 'emoji': '🥈'},
+        'tw':     {'ticker': '0050.TW', 'name': '元大台灣50','currency': 'TWD', 'emoji': '🇹🇼'},
+        'us':     {'ticker': '^IXIC',   'name': '納斯達克',  'currency': 'USD', 'emoji': '🇺🇸'},
+    }
+
     def _entry(key, res):
-        info   = ASSETS.get(key, {})
-        price  = res.get('gold', {}).get('price')
+        info   = _FIXED.get(key, {})
+        # 取價格：優先 Twelve Data
+        price  = None
         change = None
-        if not price and td_key:
-            try:
-                _, lat, prev = _td_fetch(info.get('ticker',''), td_key)
-                if lat:
-                    price  = round(lat, 2)
-                    change = round((lat-prev)/prev*100, 2) if prev else 0.0
-            except Exception: pass
+        try:
+            from gld_xgb_ensemble import _td_fetch
+            _, lat, prev = _td_fetch(info['ticker'], td_key)
+            if lat:
+                price  = round(lat, 2)
+                change = round((lat - prev) / prev * 100, 2) if prev else 0.0
+        except Exception:
+            pass
+        # fallback：從 Ensemble 結果取
+        if not price:
+            gold_d = res.get('gold', {})
+            price  = gold_d.get('price')
         return {
-            'ticker':     info.get('ticker', key),   # 永遠用 ASSETS 寫死的值
-            'name':       info.get('name', key),              # 永遠用 ASSETS 寫死的值
-            'emoji':      info.get('emoji', ''),              # 永遠用 ASSETS 寫死的值
-            'currency':   res.get('_currency', info.get('currency', 'USD')),
+            'ticker':     info['ticker'],      # 寫死
+            'name':       info['name'],        # 寫死
+            'emoji':      info['emoji'],       # 寫死
+            'currency':   info['currency'],    # 寫死
             'price':      price,
             'change':     change,
-            'signal':     res.get('signal', 'WAIT'),
-            'confidence': res.get('score', 50),
-            'prob_up':    res.get('prob_up', 50),
-            'prob_dn':    res.get('prob_dn', 50),
+            'signal':     res.get('signal',     'WAIT'),
+            'confidence': res.get('score',      50),
+            'prob_up':    res.get('prob_up',    50),
+            'prob_dn':    res.get('prob_dn',    50),
             'val_acc':    round(res.get('model', {}).get('val_acc', 0) * 100, 1),
             'horizons':   res.get('model', {}).get('horizons', {}),
             'history':    gold_history if key == 'gold' else [],
         }
-    return {k: _entry(k, asset_results.get(k, {})) for k in ['gold','silver','tw','us']}
+
+    return {k: _entry(k, asset_results.get(k, {})) for k in ['gold', 'silver', 'tw', 'us']}
 
 
 def main():
