@@ -1334,39 +1334,42 @@ class GldMmsUpdaterV6:
 
 def _build_asset_dict(asset_results: dict, gold_history: list, td_key: str) -> dict:
     """
-    四資產 HTML 注入 dict（寫死版本，不依賴 Ensemble import）
-    名稱/ticker 永遠使用下方硬編碼值，不被 res 覆蓋
+    四資產 HTML 注入 dict
+    名稱/ticker 完全硬編碼，不依賴任何外部 import，確保永遠正確
     """
-    # ── 四資產硬編碼（寫死，不可自選）────────────────────────
-    _FIXED = {
-        'gold':   {'ticker': 'GC=F',    'name': '黃金',      'currency': 'USD', 'emoji': '🥇'},
-        'silver': {'ticker': 'SI=F',    'name': '白銀',      'currency': 'USD', 'emoji': '🥈'},
-        'tw':     {'ticker': '0050.TW', 'name': '元大台灣50','currency': 'TWD', 'emoji': '🇹🇼'},
-        'us':     {'ticker': '^IXIC',   'name': '納斯達克',  'currency': 'USD', 'emoji': '🇺🇸'},
+    # ── 四資產定義（寫死，不可自選）────────────────────────────
+    _ASSETS = {
+        'gold':   {'ticker': 'GC=F',    'name': '黃金',       'currency': 'USD', 'emoji': '🥇'},
+        'silver': {'ticker': 'SI=F',    'name': '白銀',       'currency': 'USD', 'emoji': '🥈'},
+        'tw':     {'ticker': '0050.TW', 'name': '元大台灣50', 'currency': 'TWD', 'emoji': '🇹🇼'},
+        'us':     {'ticker': '^IXIC',   'name': '納斯達克',   'currency': 'USD', 'emoji': '🇺🇸'},
     }
 
     def _entry(key, res):
-        info   = _FIXED.get(key, {})
-        # 取價格：優先 Twelve Data
+        info   = _ASSETS[key]
         price  = None
         change = None
-        try:
-            from gld_xgb_ensemble import _td_fetch
-            _, lat, prev = _td_fetch(info['ticker'], td_key)
-            if lat:
-                price  = round(lat, 2)
-                change = round((lat - prev) / prev * 100, 2) if prev else 0.0
-        except Exception:
-            pass
-        # fallback：從 Ensemble 結果取
+
+        # 取即時價格：先試 Twelve Data
+        if td_key:
+            try:
+                from gld_xgb_ensemble import _td_fetch
+                _, lat, prev = _td_fetch(info['ticker'], td_key)
+                if lat:
+                    price  = round(float(lat), 2)
+                    change = round((lat - prev) / prev * 100, 2) if prev else 0.0
+            except Exception:
+                pass
+
+        # Fallback：從 Ensemble 結果取
         if not price:
-            gold_d = res.get('gold', {})
-            price  = gold_d.get('price')
+            price = res.get('gold', {}).get('price') or None
+
         return {
-            'ticker':     info['ticker'],      # 寫死
-            'name':       info['name'],        # 寫死
-            'emoji':      info['emoji'],       # 寫死
-            'currency':   info['currency'],    # 寫死
+            'ticker':     info['ticker'],      # 永遠用硬編碼值
+            'name':       info['name'],        # 永遠用硬編碼值
+            'emoji':      info['emoji'],       # 永遠用硬編碼值
+            'currency':   info['currency'],    # 永遠用硬編碼值
             'price':      price,
             'change':     change,
             'signal':     res.get('signal',     'WAIT'),
