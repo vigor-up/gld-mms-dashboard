@@ -1334,7 +1334,18 @@ class GldMmsUpdaterV6:
             _lp2 = float(self.lb_result.get('gold',{}).get('price',0) or 0)
             if _lp2: gold_history = [_lp2]
 
-        data = {
+        _safe_signals = {}
+        try:
+            _safe_signals = self.calculate_signals() or {}
+        except Exception as _se:
+            print(f"[WARN] calculate_signals: {_se}")
+        if not _safe_signals:
+            try:
+                _safe_signals = self._lambda_fallback_signal() or {}
+            except Exception as _fe:
+                print(f"[WARN] fallback_signal: {_fe}")
+
+                data = {
             'timestamp':    datetime.utcnow().isoformat() + 'Z',
             'version':      'v6.0 Top-10%-Model',
             'regime':       self.regime,
@@ -1348,7 +1359,7 @@ class GldMmsUpdaterV6:
             },
             'daily':        self.daily,
             'macro':        self.macro,
-            'signals':      self.calculate_signals() or self._lambda_fallback_signal(),
+                        'signals':      _safe_signals,
             'win_rate_20':  win_rate,
             'backtest':     bt_metrics,
             'lambda': {
