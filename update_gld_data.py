@@ -320,7 +320,16 @@ class GldMmsUpdaterV6:
         self.regime      = 'UNKNOWN'
 
         # lb_client 已移除（Lambda 改由 gld_xgb_ensemble.py 本地執行）
-        self.s3_client = boto3.client('s3',    **boto_kwargs)
+        # S3 → Cloudflare R2
+        _r2_key    = os.environ.get('R2_ACCESS_KEY_ID',     aws_ak or '')
+        _r2_secret = os.environ.get('R2_SECRET_ACCESS_KEY', aws_sk or '')
+        _r2_ep     = os.environ.get('R2_ENDPOINT_URL',
+                         'https://adb1040c847f4ae4a7d6bfedcccd7b77.r2.cloudflarestorage.com')
+        self.s3_client = boto3.client('s3',
+            endpoint_url=_r2_ep,
+            aws_access_key_id=_r2_key,
+            aws_secret_access_key=_r2_secret,
+            region_name='auto')
 
     def _clean(self, df):
         """強化版：解 yfinance 0.2.5x+ MultiIndex + object dtype 問題"""
