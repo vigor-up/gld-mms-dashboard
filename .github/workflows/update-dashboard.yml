@@ -67,7 +67,7 @@ jobs:
             --r2-access-key "${R2_ACCESS_KEY_ID:-}" \
             --r2-secret-key "${R2_SECRET_ACCESS_KEY:-}" \
             --r2-endpoint "${R2_ENDPOINT_URL:-}" \
-            --r2-bucket "${R2_BUCKET:-}" || true
+            --r2-bucket "${R2_BUCKET:-}"
 
       - name: Force touch timestamp if no change
         run: |
