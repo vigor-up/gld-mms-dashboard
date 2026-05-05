@@ -1414,7 +1414,6 @@ class GldMmsUpdaterV6:
         data = {
             'timestamp':    datetime.utcnow().isoformat() + 'Z',
             'version':      'v6.0 Top-10%-Model',
-            'debug_v':      'update_html_v3',
             'regime':       self.regime,
             'assets':       assets_data,
             'gold_history': gold_history,
