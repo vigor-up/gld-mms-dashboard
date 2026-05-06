@@ -158,27 +158,54 @@ def _td_symbol(ticker):
     return (ticker, None)
 
 def _td_fetch(ticker, td_key):
-    if not td_key:
-        return None, None, None
-    symbol, exchange = _td_symbol(ticker)
-    params = {'symbol': symbol, 'interval': '1day', 'outputsize': 32, 'apikey': td_key}
-    if exchange:
-        params['exchange'] = exchange
+    """
+    抓最新收盤價。
+    優先 Twelve Data，若失敗或無資料改用 yfinance。
+    回傳 (closes_list, latest_price, prev_price)
+    """
+    # ── 1. Twelve Data ──────────────────────────────────────────
+    if td_key:
+        symbol, exchange = _td_symbol(ticker)
+        params = {
+            'symbol': symbol,
+            'interval': '1day',
+            'outputsize': 32,
+            'apikey': td_key,
+        }
+        if exchange:
+            params['exchange'] = exchange
+        try:
+            r = requests.get('https://api.twelvedata.com/time_series',
+                             params=params, timeout=12)
+            data = r.json()
+            if data.get('status') != 'error' and 'values' in data:
+                closes = [float(v['close']) for v in data['values']]
+                closes.reverse()
+                if closes:
+                    print(f"[INFO] TD {ticker}: {closes[-1]:.2f}")
+                    return closes, closes[-1], (closes[-2] if len(closes) > 1 else closes[-1])
+            else:
+                print(f"[WARN] TD {ticker}: {data.get('message','no data')} → fallback yfinance")
+        except Exception as e:
+            print(f"[WARN] TD {ticker} exception: {e} → fallback yfinance")
+
+    # ── 2. yfinance fallback ─────────────────────────────────────
     try:
-        r = requests.get('https://api.twelvedata.com/time_series', params=params, timeout=12)
-        data = r.json()
-        if data.get('status') == 'error' or 'values' not in data:
-            print(f"[WARN] Twelve Data {ticker}: {data.get('message','err')}")
-            return None, None, None
-        vals = data['values']
-        closes = [float(v['close']) for v in vals]
-        closes.reverse()
-        latest = closes[-1] if closes else None
-        prev   = closes[-2] if len(closes) > 1 else latest
-        return closes, latest, prev
+        import yfinance as yf
+        # ticker 格式轉換：0050.TW → 0050.TW（yfinance 直接支援）
+        yf_ticker = ticker
+        hist = yf.Ticker(yf_ticker).history(period='5d', interval='1d', auto_adjust=True)
+        if not hist.empty and 'Close' in hist.columns:
+            closes = [float(x) for x in hist['Close'].dropna().tolist()]
+            if closes:
+                print(f"[INFO] yfinance {ticker}: {closes[-1]:.2f}")
+                return closes, closes[-1], (closes[-2] if len(closes) > 1 else closes[-1])
+        print(f"[WARN] yfinance {ticker}: empty")
     except Exception as e:
-        print(f"[WARN] Twelve Data {ticker}: {e}")
-        return None, None, None
+        print(f"[WARN] yfinance {ticker}: {e}")
+
+    return None, None, None
+
 
 def get_asset_data(ticker, td_key=None):
     _, latest, prev = _td_fetch(ticker, td_key)
@@ -1499,7 +1526,7 @@ def _build_asset_dict(asset_results: dict, gold_history: list, td_key: str) -> d
         # 取即時價格：先試 Twelve Data
         if td_key:
             try:
-                from gld_xgb_ensemble import _td_fetch
+                # 用本地 _td_fetch（含 yfinance fallback）
                 _, lat, prev = _td_fetch(info['ticker'], td_key)
                 if lat:
                     price  = round(float(lat), 2)
