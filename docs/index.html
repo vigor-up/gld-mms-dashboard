@@ -661,7 +661,7 @@
   }
 
   function regimeInfo(r) {
-    if (!r) return { label: '--', icon: 'ico-trend-flat', color: 'var(--muted)' };
+    if (!r || r === 'UNKNOWN' || r === 'unknown') return { label: '資料載入中', icon: 'ico-trend-flat', color: 'var(--muted)' };
     const map = {
       'trending_up':   { label: '上升趨勢', icon: 'ico-trend-up', color: 'var(--buy)' },
       'TRENDING':      { label: '趨勢中',  icon: 'ico-trend-up', color: 'var(--buy)' },
@@ -730,22 +730,35 @@
       if (s.feature_vector?.close !== undefined) { price = s.feature_vector.close; break; }
     }
     if (!price && d.daily?.price) price = d.daily.price;
-    if (price) $('#gold-price').textContent = '$' + fmtNum(price, 1);
+    if (!price && d.assets?.gold?.price) price = d.assets.gold.price;
+    
+    const priceEl = $('#gold-price');
+    const changeEl = $('#gold-change');
+    
+    if (price !== null && price !== undefined) {
+      priceEl.textContent = '$' + fmtNum(price, 1);
+    } else {
+      priceEl.textContent = '載入中...';
+      priceEl.style.color = 'var(--muted)';
+    }
 
-    const chg = d.daily?.change_pct;
+    const chg = d.daily?.change_pct ?? d.assets?.gold?.change;
     if (chg !== undefined && chg !== null) {
-      const el = $('#gold-change');
-      el.textContent = fmtPct(chg);
-      el.style.color = colorByVal(chg);
+      changeEl.textContent = fmtPct(chg);
+      changeEl.style.color = colorByVal(chg);
+    } else {
+      changeEl.textContent = '--';
+      changeEl.style.color = 'var(--muted)';
     }
   }
 
   function renderPerformance(d) {
     const wr = d.win_rate_20;
     const bt = d.backtest || {};
+    const hasData = wr !== null && wr !== undefined && bt.total_signals > 0;
 
-    if (wr !== null && wr !== undefined) {
-      $('#winrate-num').textContent = wr;
+    if (hasData) {
+      $('#winrate-num').textContent = wr + '%';
       $('#winrate-bar').style.width = Math.min(100, wr) + '%';
       const tag = $('#winrate-tag');
       tag.classList.remove('buy', 'sell', 'wait');
@@ -754,12 +767,17 @@
       else { tag.classList.add('sell'); tag.textContent = '需觀察'; $('#winrate-bar').style.background = 'var(--sell)'; }
     } else {
       $('#winrate-num').textContent = '--';
-      $('#winrate-tag').textContent = '樣本累積中';
+      $('#winrate-bar').style.width = '0%';
+      $('#winrate-bar').style.background = 'var(--muted)';
+      const tag = $('#winrate-tag');
+      tag.classList.remove('buy', 'sell', 'wait');
+      tag.classList.add('wait');
+      tag.textContent = '樣本累積中';
     }
 
     $('#bt-samples').textContent = bt.total_signals ?? bt.sample_size ?? '--';
-    $('#bt-sharpe').textContent  = bt.sharpe !== undefined ? Number(bt.sharpe).toFixed(2) : '--';
-    $('#bt-mdd').textContent     = bt.max_drawdown !== undefined ? fmtPct(bt.max_drawdown, 1) : '--';
+    $('#bt-sharpe').textContent  = bt.sharpe !== undefined && bt.sharpe !== null ? Number(bt.sharpe).toFixed(2) : '--';
+    $('#bt-mdd').textContent     = bt.max_drawdown !== undefined && bt.max_drawdown !== null ? fmtPct(bt.max_drawdown, 1) : '--';
   }
 
   let chart;
@@ -773,10 +791,14 @@
     } else if (d.daily && Array.isArray(d.daily['GC=F'])) {
       prices = d.daily['GC=F'].map(r => Number(r.close)).filter(x => !isNaN(x));
     }
+    
+    const parent = ctx.parentElement;
+    const existingMsg = parent?.querySelector('.no-data-msg');
+    if (existingMsg) existingMsg.remove();
+    
     if (!prices.length) {
       // 顯示 placeholder
-      const parent = ctx.parentElement;
-      if (parent && !parent.querySelector('.no-data-msg')) {
+      if (parent) {
         const msg = document.createElement('div');
         msg.className = 'no-data-msg absolute inset-0 flex items-center justify-center text-[var(--muted)] text-sm';
         msg.textContent = '黃金歷史資料載入中...';
@@ -784,8 +806,17 @@
       }
       return;
     }
-    const placeholder = ctx.parentElement?.querySelector('.no-data-msg');
-    if (placeholder) placeholder.remove();
+    
+    // 只有 1 個資料點時顯示提示
+    if (prices.length === 1) {
+      if (parent) {
+        const msg = document.createElement('div');
+        msg.className = 'no-data-msg absolute inset-0 flex items-center justify-center text-[var(--muted)] text-sm';
+        msg.innerHTML = '<div class="text-center"><div class="text-lg mb-1">📊</div><div>資料累積中</div><div class="text-xs mt-1 opacity-70">已收集 1 天，需 2 天以上顯示走勢</div></div>';
+        parent.appendChild(msg);
+      }
+      return;
+    }
 
     const labels = prices.map((_, i) => i === prices.length - 1 ? '今' : `-${prices.length - 1 - i}d`);
 
@@ -881,30 +912,39 @@
       const p = card.querySelector('[data-field="price"]');
       const c = card.querySelector('[data-field="change"]');
       const pillBox = card.querySelector('[data-field="signal-pill"]');
-      if (!obj) {
-        if (p) p.textContent = '--';
-        if (c) c.textContent = '--';
-        if (pillBox) pillBox.innerHTML = '';
-        return;
-      }
+      
       // 名稱
       if (nameEl) {
-        const displayName = obj.name || fallbackName;
+        const displayName = obj?.name || fallbackName;
         if (displayName) nameEl.textContent = displayName.length > 6 ? displayName.slice(0, 6) : displayName;
       }
+      
       // 價格
-      if (p && obj.price !== undefined) {
-        p.textContent = '$' + fmtNum(obj.price, obj.price > 1000 ? 0 : 2);
+      if (p) {
+        if (obj?.price !== undefined && obj.price !== null) {
+          p.textContent = '$' + fmtNum(obj.price, obj.price > 1000 ? 0 : 2);
+          p.style.color = '';
+        } else {
+          p.textContent = '載入中...';
+          p.style.color = 'var(--muted)';
+        }
       }
+      
       // 漲跌
-      if (c && obj.change !== undefined) {
-        c.textContent = fmtPct(obj.change);
-        c.style.color = colorByVal(obj.change);
+      if (c) {
+        if (obj?.change !== undefined && obj.change !== null) {
+          c.textContent = fmtPct(obj.change);
+          c.style.color = colorByVal(obj.change);
+        } else {
+          c.textContent = '--';
+          c.style.color = 'var(--muted)';
+        }
       }
+      
       // 訊號 chip
       if (pillBox) {
-        const sig = String(obj.signal || '');
-        if (sig && sig !== 'undefined') {
+        const sig = obj?.signal ? String(obj.signal) : '';
+        if (sig && sig !== 'undefined' && sig !== 'null') {
           let cls = 'wait', txt = sig;
           if (sig.includes('BUY')) { cls = 'buy'; txt = sig.includes('WEAK') ? '弱買' : '買進'; }
           else if (sig.includes('SELL')) { cls = 'sell'; txt = sig.includes('WEAK') ? '弱賣' : '賣出'; }
@@ -912,7 +952,7 @@
           const conf = obj.confidence !== undefined ? ` ${obj.confidence}%` : '';
           pillBox.innerHTML = `<span class="pill ${cls} text-[10px]" style="padding:2px 7px">${txt}${conf}</span>`;
         } else {
-          pillBox.innerHTML = '';
+          pillBox.innerHTML = '<span class="pill wait text-[10px]" style="padding:2px 7px">載入中</span>';
         }
       }
     };
