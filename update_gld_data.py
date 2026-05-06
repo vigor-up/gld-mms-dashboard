@@ -143,15 +143,18 @@ def _update_signal_history(s3_client, bucket, signal, prob_up, prob_dn, score, p
 
 # ─── Twelve Data API（取代 yfinance，不受 IP 封鎖影響）────────────────────
 _TD_MAP = {
-    'SI=F': ('XAG/USD', None),
-    'GC=F': ('XAU/USD', None),
-    'GLD':  ('GLD',     None),
+    'SI=F':    ('XAG/USD', None),
+    'GC=F':    ('XAU/USD', None),
+    'GLD':     ('GLD',     None),
+    'QQQ':     ('QQQ',     None),      # 納斯達克 ETF
+    '0050.TW': ('0050',    'XTAI'),    # 元大台灣50（Twelve Data 台灣交易所）
+    'EWT':     ('EWT',     None),      # 0050 fallback
 }
 def _td_symbol(ticker):
     if ticker in _TD_MAP:
         return _TD_MAP[ticker]
     if ticker.endswith('.TW'):
-        return (ticker[:-3], 'TSE')
+        return (ticker[:-3], 'XTAI')  # Twelve Data 台灣交易所代碼
     return (ticker, None)
 
 def _td_fetch(ticker, td_key):
