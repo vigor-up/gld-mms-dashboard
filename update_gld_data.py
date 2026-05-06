@@ -1452,8 +1452,25 @@ class GldMmsUpdaterV6:
             else:
                 print("[WARN] data-source script tag not found in HTML")
         except Exception as _he:
-            print(f"[ERROR] HTML write failed: {_he}")
-            _tb.print_exc()
+            import traceback
+            print(f"[ERROR] HTML write failed: {type(_he).__name__}: {_he}")
+            traceback.print_exc()
+            # 嘗試備用寫法
+            try:
+                import re as _re
+                with open(html_file, 'r', encoding='utf-8') as _f2:
+                    _c2 = _f2.read()
+                _pat = r'<script id=["\']data-source["\'][^>]*>.*?</script>'
+                _new_c2 = _re.sub(_pat,
+                    '<script id="data-source">window.AUTO_DATA = '
+                    + json.dumps(data, cls=NumpyEncoder)
+                    + ';</script>',
+                    _c2, flags=_re.DOTALL)
+                with open(html_file, 'w', encoding='utf-8') as _f2:
+                    _f2.write(_new_c2)
+                print(f"[SUCCESS] HTML written (regex fallback)")
+            except Exception as _he2:
+                print(f"[ERROR] HTML regex fallback also failed: {_he2}")
 
         print("[INFO] update_html done")
 
@@ -1468,7 +1485,7 @@ def _build_asset_dict(asset_results: dict, gold_history: list, td_key: str) -> d
         'gold':   {'ticker': 'GC=F',    'name': '黃金',       'currency': 'USD', 'emoji': '🥇'},
         'silver': {'ticker': 'SI=F',    'name': '白銀',       'currency': 'USD', 'emoji': '🥈'},
         'tw':     {'ticker': '0050.TW', 'name': '元大台灣50', 'currency': 'TWD', 'emoji': '🇹🇼'},
-        'us':     {'ticker': '^IXIC',   'name': '納斯達克',   'currency': 'USD', 'emoji': '🇺🇸'},
+        'us':     {'ticker': 'QQQ',   'name': '納斯達克',   'currency': 'USD', 'emoji': '🇺🇸'},
     }
 
     def _entry(key, res):
