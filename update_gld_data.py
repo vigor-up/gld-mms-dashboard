@@ -1481,47 +1481,28 @@ class GldMmsUpdaterV6:
             'lambda':       signals_data,
         }
 
-        # ── Step 8: 寫入 HTML ──────────────────────────────────────
+        # ── Step 8: 寫入 HTML ──────────────────────────────
         try:
-            with open(html_file, 'r', encoding='utf-8') as f:
-                _content = f.read()
-            _sm = '<script id="data-source">'
-            _em = '</script>'
-            _si = _content.find(_sm)
-            _ei = _content.find(_em, _si)
-            if _si >= 0 and _ei >= 0:
-                _dj = json.dumps(data, cls=NumpyEncoder)
-                _new_c = (_content[:_si]
-                          + _sm + 'window.AUTO_DATA = ' + _dj + ';' + _em
-                          + _content[_ei + len(_em):])
-                with open(html_file, 'w', encoding='utf-8') as f:
-                    f.write(_new_c)
-                print(f"[SUCCESS] HTML written: {len(_dj)} bytes, "
-                      f"gold=${assets_data.get('gold',{}).get('price')}, "
-                      f"tw={assets_data.get('tw',{}).get('name')}")
+            import re as _re2, traceback as _tb2
+            _json_str = json.dumps(data, cls=NumpyEncoder)
+            with open(html_file, 'r', encoding='utf-8') as _fh:
+                _html_old = _fh.read()
+            _pat = r'<script id="data-source">.*?</script>'
+            _html_new, _cnt = _re2.subn(_pat,
+                '<script id="data-source">window.AUTO_DATA = ' + _json_str + ';</script>',
+                _html_old, flags=_re2.DOTALL)
+            if _cnt > 0:
+                with open(html_file, 'w', encoding='utf-8') as _fh:
+                    _fh.write(_html_new)
+                _gp = data.get('assets', {}).get('gold', {}).get('price', '?')
+                _tp = data.get('assets', {}).get('tw', {}).get('price', '?')
+                _up = data.get('assets', {}).get('us', {}).get('price', '?')
+                print(f"[SUCCESS] HTML written: {len(_json_str)} bytes | gold={_gp} tw={_tp} us={_up} | {data['timestamp']}")
             else:
-                print("[WARN] data-source script tag not found in HTML")
-        except Exception as _he:
-            import traceback
-            print(f"[ERROR] HTML write failed: {type(_he).__name__}: {_he}")
-            traceback.print_exc()
-            # 嘗試備用寫法
-            try:
-                import re as _re
-                with open(html_file, 'r', encoding='utf-8') as _f2:
-                    _c2 = _f2.read()
-                _pat = r'<script id=["\']data-source["\'][^>]*>.*?</script>'
-                _new_c2 = _re.sub(_pat,
-                    '<script id="data-source">window.AUTO_DATA = '
-                    + json.dumps(data, cls=NumpyEncoder)
-                    + ';</script>',
-                    _c2, flags=_re.DOTALL)
-                with open(html_file, 'w', encoding='utf-8') as _f2:
-                    _f2.write(_new_c2)
-                print(f"[SUCCESS] HTML written (regex fallback)")
-            except Exception as _he2:
-                print(f"[ERROR] HTML regex fallback also failed: {_he2}")
-
+                print(f"[ERROR] data-source tag not found in HTML! html_size={len(_html_old)}")
+        except Exception as _he2:
+            import traceback; traceback.print_exc()
+            print(f"[ERROR] HTML write: {type(_he2).__name__}: {_he2}")
         print("[INFO] update_html done")
 
 
