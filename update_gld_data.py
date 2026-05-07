@@ -1481,28 +1481,27 @@ class GldMmsUpdaterV6:
             'lambda':       signals_data,
         }
 
-        # ── Step 8: 寫入 HTML ──────────────────────────────
+        # ── Step 8: 寫入 HTML（regex）──────────────────────────────
         try:
-            import re as _re2, traceback as _tb2
-            _json_str = json.dumps(data, cls=NumpyEncoder)
+            import re as _re2
+            _dj = json.dumps(data, cls=NumpyEncoder)
             with open(html_file, 'r', encoding='utf-8') as _fh:
                 _html_old = _fh.read()
             _pat = r'<script id="data-source">.*?</script>'
-            _html_new, _cnt = _re2.subn(_pat,
-                '<script id="data-source">window.AUTO_DATA = ' + _json_str + ';</script>',
+            _html_new, _cnt = _re2.subn(
+                _pat,
+                '<script id="data-source">window.AUTO_DATA = ' + _dj + ';</script>',
                 _html_old, flags=_re2.DOTALL)
             if _cnt > 0:
                 with open(html_file, 'w', encoding='utf-8') as _fh:
                     _fh.write(_html_new)
-                _gp = data.get('assets', {}).get('gold', {}).get('price', '?')
-                _tp = data.get('assets', {}).get('tw', {}).get('price', '?')
-                _up = data.get('assets', {}).get('us', {}).get('price', '?')
-                print(f"[SUCCESS] HTML written: {len(_json_str)} bytes | gold={_gp} tw={_tp} us={_up} | {data['timestamp']}")
+                print(f"[SUCCESS] HTML written {len(_dj)} bytes ts={data['timestamp']}")
             else:
-                print(f"[ERROR] data-source tag not found in HTML! html_size={len(_html_old)}")
-        except Exception as _he2:
+                print(f"[ERROR] data-source not found size={len(_html_old)}")
+        except Exception as _he:
             import traceback; traceback.print_exc()
-            print(f"[ERROR] HTML write: {type(_he2).__name__}: {_he2}")
+            print(f"[ERROR] HTML write: {_he}")
+
         print("[INFO] update_html done")
 
 
