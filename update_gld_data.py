@@ -189,18 +189,41 @@ def _td_fetch(ticker, td_key):
         except Exception as e:
             print(f"[WARN] TD {ticker} exception: {e} → fallback yfinance")
 
-    # ── 2. yfinance fallback ─────────────────────────────────────
+    # ── 2. Stooq fallback（免費、無需 API key、支援全球股票含台股）──
+    try:
+        # Stooq ticker 格式：0050.TW → 0050.tw，QQQ → qqq.us
+        _stooq_map = {
+            '0050.TW': '0050.tw',
+            'QQQ':     'qqq.us',
+            'SI=F':    'si.f',
+            'GC=F':    'gc.f',
+        }
+        _stooq_sym = _stooq_map.get(ticker, ticker.lower().replace('=f', '.f'))
+        _stooq_url = f'https://stooq.com/q/d/l/?s={_stooq_sym}&i=d'
+        _r2 = requests.get(_stooq_url, timeout=10,
+                           headers={'User-Agent': 'Mozilla/5.0'})
+        if _r2.status_code == 200 and len(_r2.text) > 50:
+            _rows = [l.split(',') for l in _r2.text.strip().split('\n')[1:] if l]
+            _closes = []
+            for _row in _rows[-35:]:
+                try: _closes.append(float(_row[4]))
+                except: pass
+            if _closes:
+                print(f"[INFO] Stooq {ticker}: {_closes[-1]:.2f}")
+                return _closes, _closes[-1], (_closes[-2] if len(_closes)>1 else _closes[-1])
+        print(f"[WARN] Stooq {ticker}: empty/fail ({_r2.status_code})")
+    except Exception as e:
+        print(f"[WARN] Stooq {ticker}: {e}")
+    # ── 3. yfinance 最後備援 ──────────────────────────────────────
     try:
         import yfinance as yf
-        # ticker 格式轉換：0050.TW → EWT（台灣 ETF 在美股，yfinance 可抓）
-        yf_ticker = 'EWT' if ticker == '0050.TW' else ticker
-        hist = yf.Ticker(yf_ticker).history(period='5d', interval='1d', auto_adjust=True)
-        if not hist.empty and 'Close' in hist.columns:
-            closes = [float(x) for x in hist['Close'].dropna().tolist()]
-            if closes:
-                print(f"[INFO] yfinance {ticker}: {closes[-1]:.2f}")
-                return closes, closes[-1], (closes[-2] if len(closes) > 1 else closes[-1])
-        print(f"[WARN] yfinance {ticker}: empty")
+        _yf_t = 'EWT' if ticker == '0050.TW' else ticker
+        _hist = yf.Ticker(_yf_t).history(period='5d', auto_adjust=True)
+        if not _hist.empty:
+            _cl = [float(x) for x in _hist['Close'].dropna().tolist()]
+            if _cl:
+                print(f"[INFO] yfinance {ticker}: {_cl[-1]:.2f}")
+                return _cl, _cl[-1], (_cl[-2] if len(_cl)>1 else _cl[-1])
     except Exception as e:
         print(f"[WARN] yfinance {ticker}: {e}")
 
