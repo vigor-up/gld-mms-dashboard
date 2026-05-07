@@ -922,13 +922,10 @@ class GldMmsUpdaterV6:
         _live_win_rate, _live_samples = None, 0
         _push_s3 = None
         try:
-            _aws_key    = os.environ.get('AWS_ACCESS_KEY_ID', '')
-            _aws_secret = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-            _bucket     = 'gld-mms-data-richtrong'
-            if _aws_key and _aws_secret:
-                _push_s3 = boto3.client('s3', region_name='ap-northeast-1',
-                                        aws_access_key_id=_aws_key,
-                                        aws_secret_access_key=_aws_secret)
+            # 用 R2 client（AWS 已退租）
+            _push_s3 = self.s3_client
+            _bucket  = os.environ.get('R2_BUCKET', 'richtrong-collect')
+            if _push_s3:
                 # 取當前黃金收盤價
                 _gp = 0.0
                 for _sd in self.signals.values():
@@ -1618,14 +1615,8 @@ def main():
         _pd       = float(updater.lb_result.get('prob_dn', 0) or 0)
         _lb_score = updater.lb_result.get('score', '?')
         _lb_sig   = updater.lb_result.get('signal', '?')
-        _aws_key2    = os.environ.get('AWS_ACCESS_KEY_ID', '')
-        _aws_secret2 = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-        _push_s3b = None
-        if _aws_key2 and _aws_secret2:
-            import boto3 as _b3
-            _push_s3b = _b3.client('s3', region_name='ap-northeast-1',
-                                   aws_access_key_id=_aws_key2,
-                                   aws_secret_access_key=_aws_secret2)
+        # Bark state 改用 Cloudflare R2（AWS 已退租）
+        _push_s3b = updater.s3_client
         # ── 四資產各自推播（A+B+D 品質評分）──────────────────
         from signal_quality import evaluate_signal
         _r2_bucket_push = os.environ.get('R2_BUCKET', 'richtrong-collect')
