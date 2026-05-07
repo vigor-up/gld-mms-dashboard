@@ -193,7 +193,7 @@ def _td_fetch(ticker, td_key):
     try:
         # Stooq ticker 格式：0050.TW → 0050.tw，QQQ → qqq.us
         _stooq_map = {
-            '0050.TW': '0050.tw',
+            '0050.TW': 'ewt.us',   # EWT = iShares MSCI Taiwan ETF（美股，USD）
             'QQQ':     'qqq.us',
             'SI=F':    'si.f',
             'GC=F':    'gc.f',
