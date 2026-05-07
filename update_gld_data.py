@@ -192,8 +192,8 @@ def _td_fetch(ticker, td_key):
     # ── 2. yfinance fallback ─────────────────────────────────────
     try:
         import yfinance as yf
-        # ticker 格式轉換：0050.TW → 0050.TW（yfinance 直接支援）
-        yf_ticker = ticker
+        # ticker 格式轉換：0050.TW → EWT（台灣 ETF 在美股，yfinance 可抓）
+        yf_ticker = 'EWT' if ticker == '0050.TW' else ticker
         hist = yf.Ticker(yf_ticker).history(period='5d', interval='1d', auto_adjust=True)
         if not hist.empty and 'Close' in hist.columns:
             closes = [float(x) for x in hist['Close'].dropna().tolist()]
