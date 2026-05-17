@@ -1484,13 +1484,16 @@ class GldMmsUpdaterV6:
         # ── Step 8: 寫入 HTML（regex）──────────────────────────────
         try:
             import re as _re2
-            _dj = json.dumps(data, cls=NumpyEncoder)
+            _dj = json.dumps(data, cls=NumpyEncoder, ensure_ascii=False)
             with open(html_file, 'r', encoding='utf-8') as _fh:
                 _html_old = _fh.read()
             _pat = r'<script id="data-source">.*?</script>'
+            # 使用函數作為替換，避免 \u 被 re 解釋為 Unicode 轉義
+            def _repl(m):
+                return '<script id="data-source">window.AUTO_DATA = ' + _dj + ';</script>'
             _html_new, _cnt = _re2.subn(
                 _pat,
-                '<script id="data-source">window.AUTO_DATA = ' + _dj + ';</script>',
+                _repl,
                 _html_old, flags=_re2.DOTALL)
             if _cnt > 0:
                 with open(html_file, 'w', encoding='utf-8') as _fh:

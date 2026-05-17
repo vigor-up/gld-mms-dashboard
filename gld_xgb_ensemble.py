@@ -654,7 +654,11 @@ def run_all_assets(td_key: str, r2_client=None, r2_bucket: str = 'richtrong-coll
     for asset_key, info in ASSETS.items():
         ticker = info['ticker']
         print(f"\n{'='*55}")
-        print(f"  {info['emoji']} {info['name']} ({ticker})")
+        # Unicode-safe print: avoid cp950 error on Windows
+        try:
+            print(f"  {info['emoji']} {info['name']} ({ticker})")
+        except UnicodeEncodeError:
+            print(f"  {info['name']} ({ticker})")
         print('='*55)
         try:
             result = run_ensemble(td_key, r2_client, r2_bucket, ticker)
