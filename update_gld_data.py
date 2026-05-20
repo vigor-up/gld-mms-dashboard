@@ -556,23 +556,57 @@ class GldMmsUpdaterV6:
 
     def _fetch_daily(self, ticker, name, period='90d'):
         print(f"[INFO] 獲取日線 {name} ({ticker})...")
-        _STOOQ = {'GC=F':'gc.f','SI=F':'si.f','GLD':'gld.us','QQQ':'qqq.us','0050.TW':'ewt.us'}
-        _stooq_sym = _STOOQ.get(ticker, ticker.lower().replace('=f','.f'))
         df = None
-        # 1. Stooq 優先（免費穩定，不被 GitHub Actions 封）
-        try:
-            import io
-            _url = f'https://stooq.com/q/d/l/?s={_stooq_sym}&i=d'
-            _r = requests.get(_url, timeout=12, headers={'User-Agent':'Mozilla/5.0'})
-            if _r.status_code == 200 and len(_r.text) > 100 and 'No data' not in _r.text:
-                df = pd.read_csv(io.StringIO(_r.text))
-                df.columns = [c.lower() for c in df.columns]
-                if 'date' in df.columns:
-                    df['date_full'] = pd.to_datetime(df['date'], errors='coerce').dt.strftime('%Y-%m-%d')
-                print(f"[INFO] 日線 {ticker} via Stooq: {len(df)} rows")
-        except Exception as _e:
-            print(f"[WARN] 日線 {ticker} Stooq failed: {_e}")
-        # 2. yfinance fallback
+        td_key = os.environ.get('TWELVE_DATA_KEY', '')
+
+        # 1. Twelve Data API（最可靠，GitHub Actions 不封）
+        if td_key:
+            try:
+                _TD_MAP = {
+                    'GC=F': ('XAU/USD', None), 'SI=F': ('XAG/USD', None),
+                    'GLD': ('GLD', None), 'QQQ': ('QQQ', None),
+                    '0050.TW': ('0050', 'XTAI'), 'EWT': ('EWT', None),
+                }
+                _sym, _exch = _TD_MAP.get(ticker, (ticker, None))
+                params = {'symbol': _sym, 'interval': '1day', 'outputsize': 90, 'apikey': td_key}
+                if _exch:
+                    params['exchange'] = _exch
+                r = requests.get('https://api.twelvedata.com/time_series', params=params, timeout=15)
+                data = r.json()
+                if data.get('status') != 'error' and 'values' in data:
+                    rows = data['values']
+                    df = pd.DataFrame(rows)
+                    df['close'] = df['close'].astype(float)
+                    df['open']  = df['open'].astype(float)
+                    df['high']  = df['high'].astype(float)
+                    df['low']   = df['low'].astype(float)
+                    df['volume'] = pd.to_numeric(df.get('volume', 0), errors='coerce').fillna(0)
+                    df['date_full'] = df['datetime'].str[:10]
+                    df = df.sort_values('datetime').reset_index(drop=True)
+                    print(f"[INFO] 日線 {ticker} via TwelveData: {len(df)} rows")
+                else:
+                    print(f"[WARN] 日線 {ticker} TwelveData: {data.get('message','no data')}")
+            except Exception as _e:
+                print(f"[WARN] 日線 {ticker} TwelveData: {_e}")
+
+        # 2. Stooq fallback
+        if df is None or df.empty:
+            try:
+                import io
+                _STOOQ = {'GC=F':'gc.f','SI=F':'si.f','GLD':'gld.us','QQQ':'qqq.us','0050.TW':'ewt.us'}
+                _stooq_sym = _STOOQ.get(ticker, ticker.lower().replace('=f','.f'))
+                _url = f'https://stooq.com/q/d/l/?s={_stooq_sym}&i=d'
+                _r = requests.get(_url, timeout=12, headers={'User-Agent':'Mozilla/5.0'})
+                if _r.status_code == 200 and len(_r.text) > 100 and 'No data' not in _r.text:
+                    df = pd.read_csv(io.StringIO(_r.text))
+                    df.columns = [c.lower() for c in df.columns]
+                    if 'date' in df.columns:
+                        df['date_full'] = pd.to_datetime(df['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+                    print(f"[INFO] 日線 {ticker} via Stooq: {len(df)} rows")
+            except Exception as _e:
+                print(f"[WARN] 日線 {ticker} Stooq: {_e}")
+
+        # 3. yfinance 最後備援
         if df is None or df.empty:
             try:
                 try:
@@ -590,8 +624,9 @@ class GldMmsUpdaterV6:
                 else:
                     df = None
             except Exception as _e:
-                print(f"[WARN] 日線 {ticker} yfinance failed: {_e}")
+                print(f"[WARN] 日線 {ticker} yfinance: {_e}")
                 df = None
+
         if df is None or df.empty:
             print(f"[ERROR] 日線 {ticker}: ALL SOURCES FAILED")
             return False
