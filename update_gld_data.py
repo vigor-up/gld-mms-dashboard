@@ -555,87 +555,41 @@ class GldMmsUpdaterV6:
             return False
 
     def _fetch_daily(self, ticker, name, period='90d'):
+        """用 Twelve Data API 抓日線，計算技術指標和 regime"""
         print(f"[INFO] 獲取日線 {name} ({ticker})...")
-        df = None
         td_key = os.environ.get('TWELVE_DATA_KEY', '')
-
-        # 1. Twelve Data API（最可靠，GitHub Actions 不封）
-        if td_key:
-            try:
-                _TD_MAP = {
-                    'GC=F': ('XAU/USD', None), 'SI=F': ('XAG/USD', None),
-                    'GLD': ('GLD', None), 'QQQ': ('QQQ', None),
-                    '0050.TW': ('0050', 'XTAI'), 'EWT': ('EWT', None),
-                }
-                _sym, _exch = _TD_MAP.get(ticker, (ticker, None))
-                params = {'symbol': _sym, 'interval': '1day', 'outputsize': 90, 'apikey': td_key}
-                if _exch:
-                    params['exchange'] = _exch
-                r = requests.get('https://api.twelvedata.com/time_series', params=params, timeout=15)
-                data = r.json()
-                if data.get('status') != 'error' and 'values' in data:
-                    rows = data['values']
-                    df = pd.DataFrame(rows)
-                    df['close'] = df['close'].astype(float)
-                    df['open']  = df['open'].astype(float)
-                    df['high']  = df['high'].astype(float)
-                    df['low']   = df['low'].astype(float)
-                    df['volume'] = pd.to_numeric(df.get('volume', 0), errors='coerce').fillna(0)
-                    df['date_full'] = df['datetime'].str[:10]
-                    df = df.sort_values('datetime').reset_index(drop=True)
-                    print(f"[INFO] 日線 {ticker} via TwelveData: {len(df)} rows")
-                else:
-                    print(f"[WARN] 日線 {ticker} TwelveData: {data.get('message','no data')}")
-            except Exception as _e:
-                print(f"[WARN] 日線 {ticker} TwelveData: {_e}")
-
-        # 2. Stooq fallback
-        if df is None or df.empty:
-            try:
-                import io
-                _STOOQ = {'GC=F':'gc.f','SI=F':'si.f','GLD':'gld.us','QQQ':'qqq.us','0050.TW':'ewt.us'}
-                _stooq_sym = _STOOQ.get(ticker, ticker.lower().replace('=f','.f'))
-                _url = f'https://stooq.com/q/d/l/?s={_stooq_sym}&i=d'
-                _r = requests.get(_url, timeout=12, headers={'User-Agent':'Mozilla/5.0'})
-                if _r.status_code == 200 and len(_r.text) > 100 and 'No data' not in _r.text:
-                    df = pd.read_csv(io.StringIO(_r.text))
-                    df.columns = [c.lower() for c in df.columns]
-                    if 'date' in df.columns:
-                        df['date_full'] = pd.to_datetime(df['date'], errors='coerce').dt.strftime('%Y-%m-%d')
-                    print(f"[INFO] 日線 {ticker} via Stooq: {len(df)} rows")
-            except Exception as _e:
-                print(f"[WARN] 日線 {ticker} Stooq: {_e}")
-
-        # 3. yfinance 最後備援
-        if df is None or df.empty:
-            try:
-                try:
-                    df = yf.download(ticker, period=period, interval='1d',
-                                     progress=False, auto_adjust=True, multi_level_index=False)
-                except TypeError:
-                    df = yf.download(ticker, period=period, interval='1d',
-                                     progress=False, auto_adjust=True)
-                df = self._clean(df)
-                if df is not None and not df.empty:
-                    df.reset_index(inplace=True)
-                    tc = next((c for c in ['datetime','date'] if c in df.columns), df.columns[0])
-                    df['date_full'] = pd.to_datetime(df[tc], errors='coerce').dt.strftime('%Y-%m-%d')
-                    print(f"[INFO] 日線 {ticker} via yfinance: {len(df)} rows")
-                else:
-                    df = None
-            except Exception as _e:
-                print(f"[WARN] 日線 {ticker} yfinance: {_e}")
-                df = None
-
-        if df is None or df.empty:
-            print(f"[ERROR] 日線 {ticker}: ALL SOURCES FAILED")
+        if not td_key:
+            print(f"[ERROR] 日線 {ticker}: no TWELVE_DATA_KEY")
             return False
         try:
+            _TD_MAP = {
+                'GC=F': ('XAU/USD', None), 'SI=F': ('XAG/USD', None),
+                'GLD': ('GLD', None), 'QQQ': ('QQQ', None),
+                '0050.TW': ('0050', 'XTAI'), 'EWT': ('EWT', None),
+            }
+            _sym, _exch = _TD_MAP.get(ticker, (ticker, None))
+            params = {'symbol': _sym, 'interval': '1day', 'outputsize': 90, 'apikey': td_key}
+            if _exch:
+                params['exchange'] = _exch
+            r = requests.get('https://api.twelvedata.com/time_series', params=params, timeout=15)
+            data = r.json()
+            if data.get('status') == 'error' or 'values' not in data:
+                print(f"[WARN] 日線 {ticker} TwelveData: {data.get('message','no values')}")
+                return False
+            rows = data['values']
+            df = pd.DataFrame(rows)
+            for col in ['close','open','high','low']:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+            df['volume'] = pd.to_numeric(df.get('volume', 0), errors='coerce').fillna(0)
+            df['date_full'] = df['datetime'].str[:10]
+            df = df.sort_values('datetime').reset_index(drop=True)
+            print(f"[INFO] 日線 {ticker} TwelveData: {len(df)} rows, latest={df['close'].iloc[-1]:.2f}")
             df = self._calc_indicators(df)
             self.daily[ticker] = df.tail(30).to_dict('records')
             return True
-        except Exception as _e:
-            print(f"[WARN] 日線 {ticker} calc_indicators: {_e}")
+        except Exception as e:
+            import traceback; traceback.print_exc()
+            print(f"[ERROR] 日線 {ticker}: {e}")
             return False
 
     def _fetch_cross_asset(self):
