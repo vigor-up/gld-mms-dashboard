@@ -556,26 +556,50 @@ class GldMmsUpdaterV6:
 
     def _fetch_daily(self, ticker, name, period='90d'):
         print(f"[INFO] 獲取日線 {name} ({ticker})...")
+        _STOOQ = {'GC=F':'gc.f','SI=F':'si.f','GLD':'gld.us','QQQ':'qqq.us','0050.TW':'ewt.us'}
+        _stooq_sym = _STOOQ.get(ticker, ticker.lower().replace('=f','.f'))
+        df = None
+        # 1. Stooq（優先，免費穩定，不需 API key）
         try:
+            import io
+            _url = f'https://stooq.com/q/d/l/?s={_stooq_sym}&i=d'
+            _r = requests.get(_url, timeout=12, headers={'User-Agent':'Mozilla/5.0'})
+            if _r.status_code == 200 and len(_r.text) > 100 and 'No data' not in _r.text:
+                df = pd.read_csv(io.StringIO(_r.text))
+                df.columns = [c.lower() for c in df.columns]
+                if 'date' in df.columns:
+                    df['date_full'] = pd.to_datetime(df['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+                print(f"[INFO] 日線 {ticker} Stooq {len(df)} rows")
+        except Exception as _e:
+            print(f"[WARN] 日線 {ticker} Stooq: {_e}")
+        # 2. yfinance fallback
+        if df is None or df.empty:
             try:
-                df = yf.download(ticker, period=period, interval='1d',
-                                 progress=False, auto_adjust=True,
-                                 multi_level_index=False)
-            except TypeError:
-                df = yf.download(ticker, period=period, interval='1d',
-                                 progress=False, auto_adjust=True)
-            df = self._clean(df)
-            if df is None or df.empty:
-                print(f"[WARN] 日線 {ticker}: empty")
-                return False
-            df.reset_index(inplace=True)
-            tc = 'datetime' if 'datetime' in df.columns else ('date' if 'date' in df.columns else df.columns[0])
-            df['date_full'] = pd.to_datetime(df[tc], errors='coerce').dt.strftime('%Y-%m-%d')
+                try:
+                    df = yf.download(ticker, period=period, interval='1d',
+                                     progress=False, auto_adjust=True, multi_level_index=False)
+                except TypeError:
+                    df = yf.download(ticker, period=period, interval='1d',
+                                     progress=False, auto_adjust=True)
+                df = self._clean(df)
+                if df is not None and not df.empty:
+                    df.reset_index(inplace=True)
+                    tc = next((c for c in ['datetime','date'] if c in df.columns), df.columns[0])
+                    df['date_full'] = pd.to_datetime(df[tc], errors='coerce').dt.strftime('%Y-%m-%d')
+                    print(f"[INFO] 日線 {ticker} yfinance {len(df)} rows")
+                else: df = None
+            except Exception as _e:
+                print(f"[WARN] 日線 {ticker} yfinance: {_e}")
+                df = None
+        if df is None or df.empty:
+            print(f"[WARN] 日線 {ticker}: 全部來源失敗")
+            return False
+        try:
             df = self._calc_indicators(df)
             self.daily[ticker] = df.tail(30).to_dict('records')
             return True
-        except Exception as e:
-            print(f"[WARN] 日線 {ticker}: {e}")
+        except Exception as _e:
+            print(f"[WARN] 日線 {ticker} calc: {_e}")
             return False
 
     def _fetch_cross_asset(self):
