@@ -559,7 +559,7 @@ class GldMmsUpdaterV6:
         _STOOQ = {'GC=F':'gc.f','SI=F':'si.f','GLD':'gld.us','QQQ':'qqq.us','0050.TW':'ewt.us'}
         _stooq_sym = _STOOQ.get(ticker, ticker.lower().replace('=f','.f'))
         df = None
-        # 1. Stooq（優先，免費穩定，不需 API key）
+        # 1. Stooq 優先（免費穩定，不被 GitHub Actions 封）
         try:
             import io
             _url = f'https://stooq.com/q/d/l/?s={_stooq_sym}&i=d'
@@ -569,9 +569,9 @@ class GldMmsUpdaterV6:
                 df.columns = [c.lower() for c in df.columns]
                 if 'date' in df.columns:
                     df['date_full'] = pd.to_datetime(df['date'], errors='coerce').dt.strftime('%Y-%m-%d')
-                print(f"[INFO] 日線 {ticker} Stooq {len(df)} rows")
+                print(f"[INFO] 日線 {ticker} via Stooq: {len(df)} rows")
         except Exception as _e:
-            print(f"[WARN] 日線 {ticker} Stooq: {_e}")
+            print(f"[WARN] 日線 {ticker} Stooq failed: {_e}")
         # 2. yfinance fallback
         if df is None or df.empty:
             try:
@@ -586,20 +586,21 @@ class GldMmsUpdaterV6:
                     df.reset_index(inplace=True)
                     tc = next((c for c in ['datetime','date'] if c in df.columns), df.columns[0])
                     df['date_full'] = pd.to_datetime(df[tc], errors='coerce').dt.strftime('%Y-%m-%d')
-                    print(f"[INFO] 日線 {ticker} yfinance {len(df)} rows")
-                else: df = None
+                    print(f"[INFO] 日線 {ticker} via yfinance: {len(df)} rows")
+                else:
+                    df = None
             except Exception as _e:
-                print(f"[WARN] 日線 {ticker} yfinance: {_e}")
+                print(f"[WARN] 日線 {ticker} yfinance failed: {_e}")
                 df = None
         if df is None or df.empty:
-            print(f"[WARN] 日線 {ticker}: 全部來源失敗")
+            print(f"[ERROR] 日線 {ticker}: ALL SOURCES FAILED")
             return False
         try:
             df = self._calc_indicators(df)
             self.daily[ticker] = df.tail(30).to_dict('records')
             return True
         except Exception as _e:
-            print(f"[WARN] 日線 {ticker} calc: {_e}")
+            print(f"[WARN] 日線 {ticker} calc_indicators: {_e}")
             return False
 
     def _fetch_cross_asset(self):
