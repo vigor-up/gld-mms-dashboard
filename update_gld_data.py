@@ -482,9 +482,9 @@ class GldMmsUpdaterV6:
         df['stoch_k'] = 100 * (df[c] - lo14) / (hi14 - lo14 + 1e-10)
         df['stoch_d'] = df['stoch_k'].rolling(3).mean()
 
-        tr  = np.maximum(h - l,
-               np.maximum(abs(h - df[c].shift(1)),
-                          abs(l - df[c].shift(1))))
+        tr  = np.maximum(df[h] - df[l],
+                         np.maximum(abs(df[h] - df[c].shift(1)),
+                                    abs(df[l] - df[c].shift(1))))
         plus_dm  = (df[h].diff().where(df[h].diff() > 0, 0)
                     .rolling(14).mean())
         minus_dm = (-df[l].diff().where(df[l].diff() < 0, 0)
@@ -494,17 +494,17 @@ class GldMmsUpdaterV6:
         df['adx_smooth'] = df['adx'].ewm(span=14).mean()
         df['atr']        = atr14
 
-        tp = (h + l + c) / 3
+        tp = (df[h] + df[l] + df[c]) / 3
         df['cci'] = (tp - tp.rolling(14).mean()) / (0.015 * tp.rolling(14).std())
 
         df['williams_r'] = -100 * (hi14 - df[c]) / (hi14 - lo14 + 1e-10)
 
         df['momentum'] = df[c] / df[c].shift(10) - 1
 
-        df['obv']     = (np.sign(df[c].diff()) * v).fillna(0).cumsum()
+        df['obv']     = (np.sign(df[c].diff()) * df[v]).fillna(0).cumsum()
         df['obv_ma5'] = df['obv'].rolling(5).mean()
 
-        df['vwap']     = ((h+l+c)/3 * v).rolling(5).sum() / v.rolling(5).sum()
+        df['vwap']     = ((df[h]+df[l]+df[c])/3 * df[v]).rolling(5).sum() / df[v].rolling(5).sum()
         df['vwap_dev'] = (df[c] / df['vwap'] - 1) * 100
 
         df['atr_low']  = df['atr'] < df['atr'].rolling(50).min() * 1.1
@@ -512,8 +512,8 @@ class GldMmsUpdaterV6:
         df['bull_div'] = ((df[c] < df[c].shift(3)) & (df['obv'] > df['obv'].shift(3)))
         df['bear_div'] = ((df[c] > df[c].shift(3)) & (df['obv'] < df['obv'].shift(3)))
 
-        hl   = h - l
-        body = abs(df[c] - o)
+        hl   = df[h] - df[l]
+        body = abs(df[c] - df[o])
         df['pin_bar'] = (body < hl * 0.2) & (hl > (hl.rolling(20).mean() * 2))
 
         adx_now = df['adx'].iloc[-1]
@@ -555,41 +555,100 @@ class GldMmsUpdaterV6:
             return False
 
     def _fetch_daily(self, ticker, name, period='90d'):
-        """用 Twelve Data API 抓日線，計算技術指標和 regime"""
+        """TwelveData 優先，Apify 次之，yfinance 最後備援"""
         print(f"[INFO] 獲取日線 {name} ({ticker})...")
         td_key = os.environ.get('TWELVE_DATA_KEY', '')
-        if not td_key:
-            print(f"[ERROR] 日線 {ticker}: no TWELVE_DATA_KEY")
+        df = None
+
+        # 1. Twelve Data API
+        if td_key:
+            try:
+                _TD_MAP = {
+                    'GC=F': ('XAU/USD', None), 'SI=F': ('XAG/USD', None),
+                    'GLD': ('GLD', None), 'QQQ': ('QQQ', None),
+                    '0050.TW': ('0050', 'XTAI'), 'EWT': ('EWT', None),
+                }
+                _sym, _exch = _TD_MAP.get(ticker, (ticker, None))
+                params = {'symbol': _sym, 'interval': '1day', 'outputsize': 90, 'apikey': td_key}
+                if _exch:
+                    params['exchange'] = _exch
+                r = requests.get('https://api.twelvedata.com/time_series', params=params, timeout=15)
+                data = r.json()
+                if data.get('status') == 'error' or 'values' not in data:
+                    print(f"[WARN] 日線 {ticker} TwelveData: {data.get('message','no values')}")
+                else:
+                    rows = data['values']
+                    df = pd.DataFrame(rows)
+                    for col in ['close','open','high','low']:
+                        df[col] = pd.to_numeric(df[col], errors='coerce')
+                    df['volume'] = pd.to_numeric(df.get('volume', 0), errors='coerce').fillna(0)
+                    df['date_full'] = df['datetime'].str[:10]
+                    df = df.sort_values('datetime').reset_index(drop=True)
+                    print(f"[INFO] 日線 {ticker} TwelveData: {len(df)} rows, latest={df['close'].iloc[-1]:.2f}")
+            except Exception as e:
+                import traceback; traceback.print_exc()
+                print(f"[WARN] 日線 {ticker} TwelveData: {e}")
+        else:
+            print(f"[WARN] 日線 {ticker}: no TWELVE_DATA_KEY, trying fallbacks")
+
+        # 2. Apify Yahoo Finance fallback（免費 quota，台股/美股都支援）
+        if (df is None or df.empty) and ticker in ('0050.TW', 'QQQ', 'GC=F', 'SI=F'):
+            try:
+                _apify_key = 'apk-be00b411eb776911d9a30efd58f85e85c9edf7fd51f65e5b04975d08c8991299'
+                _apify_url = 'https://api.apify.com/v2/acts/mscdex~yahoo-finance-scraper/run-sync-get-dataset-items'
+                _payload = {"symbols": [ticker], "timePeriod": "3mo", "timeInterval": "1d"}
+                _r = requests.post(_apify_url, json=_payload,
+                                   params={'token': _apify_key}, timeout=60)
+                if _r.status_code == 200:
+                    _items = _r.json()
+                    if _items and isinstance(_items, list):
+                        _item = (_items[0] if len(_items) == 1
+                                 else next((i for i in _items if i.get('symbol') == ticker), _items[0]))
+                        _hist = _item.get('historical', []) or _item.get('data', [])
+                        if _hist:
+                            df = pd.DataFrame(_hist)
+                            df.columns = [_c.lower() for _c in df.columns]
+                            for col in ['close','open','high','low']:
+                                if col in df.columns:
+                                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                            df['volume'] = pd.to_numeric(df.get('volume', 0), errors='coerce').fillna(0)
+                            if 'date' in df.columns:
+                                df['date_full'] = pd.to_datetime(df['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+                            df = df.sort_values('date_full').reset_index(drop=True)
+                            print(f"[INFO] 日線 {ticker} via Apify: {len(df)} rows")
+                else:
+                    print(f"[WARN] 日線 {ticker} Apify: HTTP {_r.status_code}")
+            except Exception as _e:
+                print(f"[WARN] 日線 {ticker} Apify: {_e}")
+
+        # 3. yfinance 最後備援
+        if df is None or df.empty:
+            try:
+                df = yf.download(ticker, period='90d', interval='1d',
+                                 progress=False, auto_adjust=True)
+                if df is not None and not df.empty:
+                    df = self._clean(df)
+                    if df is not None and not df.empty:
+                        df.reset_index(inplace=True)
+                        tc = next((_c for _c in ['datetime','date'] if _c in df.columns), df.columns[0])
+                        df['date_full'] = pd.to_datetime(df[tc], errors='coerce').dt.strftime('%Y-%m-%d')
+                        print(f"[INFO] 日線 {ticker} via yfinance: {len(df)} rows")
+                    else: df = None
+                else: df = None
+            except Exception as _e:
+                print(f"[WARN] 日線 {ticker} yfinance: {_e}")
+                df = None
+
+        if df is None or df.empty:
+            print(f"[ERROR] 日線 {ticker}: ALL SOURCES FAILED")
             return False
         try:
-            _TD_MAP = {
-                'GC=F': ('XAU/USD', None), 'SI=F': ('XAG/USD', None),
-                'GLD': ('GLD', None), 'QQQ': ('QQQ', None),
-                '0050.TW': ('0050', 'XTAI'), 'EWT': ('EWT', None),
-            }
-            _sym, _exch = _TD_MAP.get(ticker, (ticker, None))
-            params = {'symbol': _sym, 'interval': '1day', 'outputsize': 90, 'apikey': td_key}
-            if _exch:
-                params['exchange'] = _exch
-            r = requests.get('https://api.twelvedata.com/time_series', params=params, timeout=15)
-            data = r.json()
-            if data.get('status') == 'error' or 'values' not in data:
-                print(f"[WARN] 日線 {ticker} TwelveData: {data.get('message','no values')}")
-                return False
-            rows = data['values']
-            df = pd.DataFrame(rows)
-            for col in ['close','open','high','low']:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-            df['volume'] = pd.to_numeric(df.get('volume', 0), errors='coerce').fillna(0)
-            df['date_full'] = df['datetime'].str[:10]
-            df = df.sort_values('datetime').reset_index(drop=True)
-            print(f"[INFO] 日線 {ticker} TwelveData: {len(df)} rows, latest={df['close'].iloc[-1]:.2f}")
             df = self._calc_indicators(df)
             self.daily[ticker] = df.tail(30).to_dict('records')
             return True
-        except Exception as e:
+        except Exception as _e:
             import traceback; traceback.print_exc()
-            print(f"[ERROR] 日線 {ticker}: {e}")
+            print(f"[WARN] 日線 {ticker} calc_indicators: {_e}")
             return False
 
     def _fetch_cross_asset(self):
@@ -1554,6 +1613,23 @@ def _build_asset_dict(asset_results: dict, gold_history: list, td_key: str) -> d
         # Fallback：從 Ensemble 結果取
         if not price:
             price = res.get('gold', {}).get('price') or None
+
+        # Apify 即時價格 fallback
+        if not price and info['ticker'] in ('0050.TW',):
+            try:
+                _apify_key = 'apk-be00b411eb776911d9a30efd58f85e85c9edf7fd51f65e5b04975d08c8991299'
+                _url = 'https://api.apify.com/v2/acts/mscdex~yahoo-finance-scraper/run-sync-get-dataset-items'
+                _r = requests.post(_url, json={"symbols": [info['ticker']]},
+                                   params={'token': _apify_key}, timeout=30)
+                if _r.status_code == 200:
+                    _items = _r.json()
+                    if _items:
+                        _p = _items[0].get('regularMarketPrice') or _items[0].get('price')
+                        if _p:
+                            price = round(float(_p), 2)
+                            print(f"[INFO] {info['ticker']} Apify price: {price}")
+            except Exception as _e:
+                print(f"[WARN] {info['ticker']} Apify price: {_e}")
 
         return {
             'ticker':     info['ticker'],      # 永遠用硬編碼值
