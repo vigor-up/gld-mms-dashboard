@@ -93,7 +93,7 @@ jobs:
       - name: Purge Cloudflare cache
         if: success()
         run: |
-          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/734049ab873fb52d0bb97ad375f27bd1/purge_cache" \
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/3ceea59661db3f8fddd4b05167627b68/purge_cache" \
             -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             --data '{"purge_everything":true}' || echo "Cloudflare purge skipped"
